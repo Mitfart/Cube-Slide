@@ -154,7 +154,8 @@ export class GridController extends Component {
     }
 
     public isFilledGrid(x: number, z: number): boolean {
-        return this.filledTiles.has(this.key(x, z));
+        const key = this.key(x, z);
+        return this.filledTiles.has(key) || this.fillNodes.has(key);
     }
 
     public isEmptyFloorGrid(x: number, z: number): boolean {
