@@ -132,12 +132,7 @@ export class PlayerController extends Component {
                 this.paintCurrentCell();
                 this.moving = false;
                 this.direction.set(0, 0);
-                if (this.hasTrail) {
-                    const cell = this.grid!.localToGrid(this.node.position);
-                    this.grid!.commitTrailToFill(cell, this.playerFill!);
-                    this.hasTrail = false;
-                    this.pendingLevelCompleteCell = this.grid!.isLevelCompleteOrFilling(cell) ? cell : null;
-                }
+                this.commitTrailAtCurrentCell();
             })
             .start();
     }
@@ -165,15 +160,20 @@ export class PlayerController extends Component {
     }
 
     private commitTrailIfEndedOnFill(): boolean {
+        if (!this.grid) {
+            return false;
+        }
+
+        const cell = this.grid.localToGrid(this.node.position);
+        return this.grid.isFilledGrid(cell.x, cell.y) && this.commitTrailAtCurrentCell();
+    }
+
+    private commitTrailAtCurrentCell(): boolean {
         if (!this.grid || !this.playerFill || !this.hasTrail) {
             return false;
         }
 
         const cell = this.grid.localToGrid(this.node.position);
-        if (!this.grid.isFilledGrid(cell.x, cell.y)) {
-            return false;
-        }
-
         this.grid.commitTrailToFill(cell, this.playerFill);
         this.hasTrail = false;
         this.pendingLevelCompleteCell = this.grid.isLevelCompleteOrFilling(cell) ? cell : null;
