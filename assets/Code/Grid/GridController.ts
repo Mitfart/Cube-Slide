@@ -184,7 +184,8 @@ export class GridController extends Component {
     public getSlideTarget(start: Vec2, direction: Vec2): Vec3 {
         let x = start.x;
         let z = start.y;
-        let movedThroughEmpty = false;
+        const startFilled = this.isFilledGrid(x, z);
+        let movedThroughEmpty = !startFilled;
         while (true) {
             const nextX = x + direction.x;
             const nextZ = z + direction.y;
