@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GltfImporter = void 0;
+const model_base_importer_1 = require("./model-base-importer");
+class GltfImporter extends model_base_importer_1.ModelBaseImporter {
+    constructor() {
+        super(...arguments);
+        this.name = 'gltf';
+    }
+    addSpecificUserData(userData, container) {
+        // GLTF specific properties if any
+    }
+}
+exports.GltfImporter = GltfImporter;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZ2x0Zi1pbXBvcnRlci5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uLy4uL3NvdXJjZS91dGNwL3V0aWxzL2Fzc2V0LWltcG9ydGVycy9nbHRmLWltcG9ydGVyLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUFBLCtEQUEwRDtBQUcxRCxNQUFhLFlBQWEsU0FBUSx1Q0FBaUI7SUFBbkQ7O1FBQ0ksU0FBSSxHQUFHLE1BQU0sQ0FBQztJQUtsQixDQUFDO0lBSGEsbUJBQW1CLENBQUMsUUFBYSxFQUFFLFNBQXVDO1FBQ2hGLGtDQUFrQztJQUN0QyxDQUFDO0NBQ0o7QUFORCxvQ0FNQyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IE1vZGVsQmFzZUltcG9ydGVyIH0gZnJvbSAnLi9tb2RlbC1iYXNlLWltcG9ydGVyJztcclxuaW1wb3J0IHsgSVByb3BlcnR5IH0gZnJvbSAnQGNvY29zL2NyZWF0b3ItdHlwZXMvZWRpdG9yL3BhY2thZ2VzL3NjZW5lL0B0eXBlcy9wdWJsaWMnO1xyXG5cclxuZXhwb3J0IGNsYXNzIEdsdGZJbXBvcnRlciBleHRlbmRzIE1vZGVsQmFzZUltcG9ydGVyIHtcclxuICAgIG5hbWUgPSAnZ2x0Zic7XHJcblxyXG4gICAgcHJvdGVjdGVkIGFkZFNwZWNpZmljVXNlckRhdGEodXNlckRhdGE6IGFueSwgY29udGFpbmVyOiB7IFtrZXk6IHN0cmluZ106IElQcm9wZXJ0eSB9KTogdm9pZCB7XHJcbiAgICAgICAgLy8gR0xURiBzcGVjaWZpYyBwcm9wZXJ0aWVzIGlmIGFueVxyXG4gICAgfVxyXG59XHJcbiJdfQ==
