@@ -1,4 +1,5 @@
-import { _decorator, Camera, Component, instantiate, Node, Prefab, Vec2, Vec3, view, tween } from 'cc';
+import { _decorator, Camera, Component, instantiate, Node, Prefab, Vec2, Vec3, view } from 'cc';
+import { spawnPrefabBurst } from '../Effects/PrefabBurst';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
 import { GridController } from '../Grid/GridController';
 import { EnemyController } from '../Enemy/EnemyController';
@@ -6,6 +7,12 @@ import { PlayerController } from '../Player/PlayerController';
 import { Analytics, AnalyticEvents } from '../Services/Analytics';
 import { UIManager } from '../UI/UIManager';
 const { ccclass, property } = _decorator;
+
+interface CameraTarget {
+    levelIndex: number;
+    nextLevelIndex: number;
+    t: number;
+}
 
 @ccclass('GameManager')
 export class GameManager extends Component {
@@ -29,14 +36,13 @@ export class GameManager extends Component {
     private ended = false;
     private currentLevels: LevelConfig[] = [];
     private baseOrthoHeight = 0;
-    private lastLandscape = false;
 
     protected start(): void {
         this.startGame();
     }
 
     public startGame(): void {
-        this.buildLevels([LEVELS[0], LEVELS[1]]);
+        this.buildLevels(LEVELS);
     }
 
     public restartGame(): void {
@@ -48,7 +54,6 @@ export class GameManager extends Component {
             return;
         }
 
-        this.lastLandscape = this.isLandscape();
         this.updateCamera();
         this.checkEnemyHit();
     }
@@ -208,23 +213,16 @@ export class GameManager extends Component {
 
         const origin = this.player.worldPosition.clone();
         origin.y += 1;
-        for (let i = 0; i < 40; i++) {
-            const piece = instantiate(this.enemyPrefab);
-            piece.setParent(this.grid.node);
-            piece.setWorldPosition(origin);
-            piece.setScale(0.25, 0.25, 0.25);
-            const angle = Math.random() * Math.PI * 2;
-            const radius = 1 + Math.random() * 3;
-            const target = new Vec3(
-                piece.position.x + Math.cos(angle) * radius,
-                piece.position.y + 1 + Math.random() * 2,
-                piece.position.z + Math.sin(angle) * radius,
-            );
-            tween(piece)
-                .to(0.45 + Math.random() * 0.25, { position: target, scale: new Vec3(0, 0, 0) }, { easing: 'quadOut' })
-                .call(() => piece.destroy())
-                .start();
-        }
+        spawnPrefabBurst(this.enemyPrefab, this.grid.node, origin, {
+            count: 40,
+            scale: 0.25,
+            minRadius: 1,
+            maxRadius: 4,
+            minHeight: 1,
+            maxHeight: 3,
+            minDuration: 0.45,
+            maxDuration: 0.7,
+        });
     }
 
     public failGame(): void {
@@ -276,10 +274,10 @@ export class GameManager extends Component {
         }
 
         const isLandscape = this.isLandscape();
-        this.lastLandscape = isLandscape;
-        const zoom = this.getCameraZoom(isLandscape);
-        const offsetZ = this.getCameraOffsetZ(isLandscape);
-        const center = this.getCameraCenter();
+        const targetLevel = this.getCameraTarget();
+        const zoom = this.getCameraZoom(isLandscape, targetLevel);
+        const offsetZ = this.getCameraOffsetZ(isLandscape, targetLevel);
+        const center = this.getCameraCenter(targetLevel);
         const gridPosition = this.grid.node.worldPosition;
         const position = this.camera.node.worldPosition;
         const target = new Vec3(gridPosition.x + center.x, gridPosition.y + center.y, gridPosition.z + center.z + offsetZ);
@@ -291,66 +289,54 @@ export class GameManager extends Component {
         this.camera.orthoHeight = this.baseOrthoHeight * zoom;
     }
 
-    private getCameraCenter(): Vec3 {
-        if (!this.grid || !this.player) {
+    private getCameraCenter(target: CameraTarget): Vec3 {
+        if (!this.grid) {
             return new Vec3();
         }
 
-        const a = this.grid.getBuiltLevelCenter(0);
-        const b = this.grid.getBuiltLevelCenter(1);
+        const a = this.grid.getBuiltLevelCenter(target.levelIndex);
+        const b = this.grid.getBuiltLevelCenter(target.nextLevelIndex);
         if (!a || !b) {
             return a ?? new Vec3();
         }
 
-        const transition = this.grid.getCameraTransitionZ(0);
-        if (!transition) {
-            return a;
-        }
-
-        const t = this.getCameraTransitionT();
         return new Vec3(
-            a.x + (b.x - a.x) * t,
-            a.y + (b.y - a.y) * t,
-            a.z + (b.z - a.z) * t,
+            this.lerp(a.x, b.x, target.t),
+            this.lerp(a.y, b.y, target.t),
+            this.lerp(a.z, b.z, target.t),
         );
     }
 
-    private getCameraZoom(isLandscape: boolean): number {
-        const a = this.currentLevels[0];
-        const b = this.currentLevels[1];
+    private getCameraZoom(isLandscape: boolean, target: CameraTarget): number {
+        const a = this.currentLevels[target.levelIndex];
+        const b = this.currentLevels[target.nextLevelIndex];
         const zoomA = isLandscape ? a.cameraZoomLandscape : a.cameraZoomPortrait;
-        if (!b) {
-            return zoomA;
-        }
-
-        const zoomB = isLandscape ? b.cameraZoomLandscape : b.cameraZoomPortrait;
-        return this.lerp(zoomA, zoomB, this.getCameraTransitionT());
+        const zoomB = b ? (isLandscape ? b.cameraZoomLandscape : b.cameraZoomPortrait) : zoomA;
+        return this.lerp(zoomA, zoomB, target.t);
     }
 
-    private getCameraOffsetZ(isLandscape: boolean): number {
-        const a = this.currentLevels[0];
-        const b = this.currentLevels[1];
+    private getCameraOffsetZ(isLandscape: boolean, target: CameraTarget): number {
+        const a = this.currentLevels[target.levelIndex];
+        const b = this.currentLevels[target.nextLevelIndex];
         const offsetA = isLandscape ? (a.cameraOffsetZLandscape ?? 0) : (a.cameraOffsetZPortrait ?? 0);
-        if (!b) {
-            return offsetA;
-        }
-
-        const offsetB = isLandscape ? (b.cameraOffsetZLandscape ?? 0) : (b.cameraOffsetZPortrait ?? 0);
-        return this.lerp(offsetA, offsetB, this.getCameraTransitionT());
+        const offsetB = b ? (isLandscape ? (b.cameraOffsetZLandscape ?? 0) : (b.cameraOffsetZPortrait ?? 0)) : offsetA;
+        return this.lerp(offsetA, offsetB, target.t);
     }
 
-    private getCameraTransitionT(): number {
+    private getCameraTarget(): CameraTarget {
         if (!this.grid || !this.player) {
-            return 0;
+            return { levelIndex: 0, nextLevelIndex: 0, t: 0 };
         }
 
-        const transition = this.grid.getCameraTransitionZ(0);
-        if (!transition) {
-            return 0;
+        const z = this.player.position.z;
+        for (let i = 0; i < this.grid.getBuiltLevelCount() - 1; i++) {
+            const t = this.grid.getLevelTransitionT(i, z);
+            if (t === null) continue;
+            return { levelIndex: i, nextLevelIndex: i + 1, t };
         }
 
-        const t = Math.max(0, Math.min(1, (this.player.position.z - transition.x) / (transition.y - transition.x)));
-        return t * t * (3 - 2 * t);
+        const levelIndex = this.grid.getNearestBuiltLevelIndex(z);
+        return { levelIndex, nextLevelIndex: levelIndex, t: 0 };
     }
 
     private lerp(a: number, b: number, t: number): number {

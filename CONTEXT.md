@@ -11,14 +11,15 @@
 - **Tunnel** — generated corridor from the top-center wall of the current level and extending upward; length is defined by the source level.
 - **Wall Shadow** — spawned only where an offset wall shadow overlaps non-wall tiles, so shadows stick out onto floor/lock tiles only.
 - **Game Manager** — composition root that starts/restarts level flow, spawns player after level build, and positions/zooms camera from level config.
+- **Prefab Burst** — shared helper for short-lived prefab particles used by enemy destruction and win confetti.
 - **Player Controller** — swipe-driven grid mover on the player prefab. Runtime-injected grid ref is hidden from inspector. A swipe slides smoothly until blocked; mid-slide swipe finishes the current cell using a small snap-back threshold, then starts the new direction.
 
 ## Working implementation notes
 
 - `GridController` builds levels on X/Z plane, with Y fixed at `0`.
 - `LevelConfig.rows[0]` is the top row. Tunnel is generated above that row, centered on the top wall opening, and extends upward.
-- `GameManager` currently builds `LEVELS[0]` and `LEVELS[1]` in one grid. Level 2 is attached to level 1 through the tunnel; only the center bottom wall cell is opened.
-- Walls are merged into straight runs after all connected levels are tiled. Shadows are clipped per floor/lock tile overlap, so level 2 wall shadow can fall onto level 1 tunnel floor.
+- `GameManager` builds the selected `LEVELS` array in one grid. Any next level is attached to the previous level through the tunnel; only the center bottom wall cell is opened.
+- Walls are merged into straight runs after all connected levels are tiled. Shadows are clipped per floor/lock tile overlap, so a later level wall shadow can fall onto an earlier tunnel floor.
 - `GridController.getLevelCenter(level)` returns the standalone main level center without tunnel. `getBuiltLevelCenter(index)` returns placed connected-level centers.
-- Camera keeps scene rotation/Y height. During tunnel travel, camera position, Z offset, and ortho zoom ease between level 1 and level 2 configs; outside the tunnel it stays on the nearest level center.
+- Camera keeps scene rotation/Y height. During tunnel travel, camera position, Z offset, and ortho zoom ease between neighboring level configs; outside tunnels it stays on the nearest level center.
 - Player prefab must have `PlayerController` directly. `GameManager` only injects `GridController`; it does not add gameplay components at runtime. Swipes choose grid directions; movement tween goes to the final wall-stop target for smooth sliding. Mid-slide direction changes finish the current cell first, with snap-back before 25% cell progress.

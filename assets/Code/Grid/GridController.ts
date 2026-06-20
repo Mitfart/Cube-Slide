@@ -44,7 +44,7 @@ export class GridController extends Component {
     private readonly cameraTransitionZ: Vec2[] = [];
 
     public buildDefaultLevel(): void {
-        this.buildLevels([LEVELS[0], LEVELS[1]]);
+        this.buildLevels(LEVELS);
     }
 
     public buildLevel(level: LevelConfig): void {
@@ -110,6 +110,32 @@ export class GridController extends Component {
         return this.cameraTransitionZ[index] ?? null;
     }
 
+    public getBuiltLevelCount(): number {
+        return this.levelCenters.length;
+    }
+
+    public getNearestBuiltLevelIndex(z: number): number {
+        let bestIndex = 0;
+        let bestDistance = Number.MAX_SAFE_INTEGER;
+        for (let i = 0; i < this.levelCenters.length; i++) {
+            const distance = Math.abs(z - this.levelCenters[i].z);
+            if (distance >= bestDistance) continue;
+            bestDistance = distance;
+            bestIndex = i;
+        }
+        return bestIndex;
+    }
+
+    public getLevelTransitionT(index: number, z: number): number | null {
+        const transition = this.cameraTransitionZ[index];
+        if (!transition) return null;
+        const min = Math.min(transition.x, transition.y);
+        const max = Math.max(transition.x, transition.y);
+        if (z < min || z > max) return null;
+        const t = Math.max(0, Math.min(1, (z - transition.x) / (transition.y - transition.x)));
+        return t * t * (3 - 2 * t);
+    }
+
     public clearLevel(): void {
         for (const tile of this.spawned) {
             tile.destroy();
@@ -156,6 +182,10 @@ export class GridController extends Component {
     public isFilledGrid(x: number, z: number): boolean {
         const key = this.key(x, z);
         return this.filledTiles.has(key) || this.fillNodes.has(key);
+    }
+
+    public isSettledFilledGrid(x: number, z: number): boolean {
+        return this.filledTiles.has(this.key(x, z));
     }
 
     public isEmptyFloorGrid(x: number, z: number): boolean {
@@ -268,7 +298,7 @@ export class GridController extends Component {
         }
 
         const keys = [...this.levelFillableTiles[levelIndex]].filter(key => !this.filledTiles.has(key) && !this.fillNodes.has(key));
-        const delays = this.getAStarFillDelays(keys, cell);
+        const delays = this.getFillDelays(keys, cell);
         for (const key of keys) {
             const [x, z] = this.parseKey(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
@@ -495,7 +525,7 @@ export class GridController extends Component {
         }
 
         const inner = [...this.levelFillableTiles[levelIndex]].filter(key => !this.filledTiles.has(key) && !outside.has(key));
-        const delays = this.getAStarFillDelays(inner, playerCell);
+        const delays = this.getFillDelays(inner, playerCell);
         for (const key of inner) {
             const [x, z] = this.parseKey(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
@@ -517,52 +547,29 @@ export class GridController extends Component {
         return { minX, maxX, minZ, maxZ };
     }
 
-    private getAStarFillDelays(keys: string[], playerCell: Vec2): Map<string, number> {
+    private getFillDelays(keys: string[], playerCell: Vec2): Map<string, number> {
         const area = new Set(keys);
-        area.add(this.key(playerCell.x, playerCell.y));
-        const delays = new Map<string, number>();
-        let min = Number.MAX_SAFE_INTEGER;
+        const startKey = this.key(playerCell.x, playerCell.y);
+        area.add(startKey);
 
-        for (const key of keys) {
-            const distance = this.getAStarDistance(playerCell, key, area);
-            delays.set(key, distance);
-            min = Math.min(min, distance);
+        const delays = new Map<string, number>([[startKey, 0]]);
+        const queue = [startKey];
+        for (let i = 0; i < queue.length; i++) {
+            const [x, z] = this.parseKey(queue[i]);
+            const nextDelay = (delays.get(queue[i]) ?? 0) + 1;
+            for (const next of [this.key(x + 1, z), this.key(x - 1, z), this.key(x, z + 1), this.key(x, z - 1)]) {
+                if (!area.has(next) || delays.has(next)) continue;
+                delays.set(next, nextDelay);
+                queue.push(next);
+            }
         }
 
         for (const key of keys) {
-            delays.set(key, (delays.get(key) ?? min) - min);
+            if (delays.has(key)) continue;
+            const [x, z] = this.parseKey(key);
+            delays.set(key, Math.abs(x - playerCell.x) + Math.abs(z - playerCell.y));
         }
         return delays;
-    }
-
-    private getAStarDistance(start: Vec2, targetKey: string, area: Set<string>): number {
-        const [targetX, targetZ] = this.parseKey(targetKey);
-        const startKey = this.key(start.x, start.y);
-        const open = [startKey];
-        const cost = new Map<string, number>([[startKey, 0]]);
-
-        for (let guard = 0; open.length > 0 && guard < area.size * 4; guard++) {
-            open.sort((a, b) => this.getAStarScore(a, targetX, targetZ, cost) - this.getAStarScore(b, targetX, targetZ, cost));
-            const current = open.shift()!;
-            if (current === targetKey) {
-                return cost.get(current) ?? 0;
-            }
-
-            const [x, z] = this.parseKey(current);
-            const nextCost = (cost.get(current) ?? 0) + 1;
-            for (const next of [this.key(x + 1, z), this.key(x - 1, z), this.key(x, z + 1), this.key(x, z - 1)]) {
-                if (!area.has(next) || nextCost >= (cost.get(next) ?? Number.MAX_SAFE_INTEGER)) continue;
-                cost.set(next, nextCost);
-                open.push(next);
-            }
-        }
-
-        return Math.abs(targetX - start.x) + Math.abs(targetZ - start.y);
-    }
-
-    private getAStarScore(key: string, targetX: number, targetZ: number, cost: Map<string, number>): number {
-        const [x, z] = this.parseKey(key);
-        return (cost.get(key) ?? 0) + Math.abs(targetX - x) + Math.abs(targetZ - z);
     }
 
     private getCompletedLevelIndex(cell: Vec2): number {
@@ -654,7 +661,4 @@ export class GridController extends Component {
         return true;
     }
 
-    private usesLock(rows: string[]): boolean {
-        return rows.some(row => row.includes('L'));
-    }
 }

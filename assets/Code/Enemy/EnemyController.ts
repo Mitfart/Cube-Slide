@@ -1,4 +1,5 @@
 import { _decorator, Component, Node, Prefab, Vec2, Vec3, instantiate, tween } from 'cc';
+import { spawnPrefabBurst } from '../Effects/PrefabBurst';
 import { GridController } from '../Grid/GridController';
 const { ccclass, property } = _decorator;
 
@@ -105,13 +106,17 @@ export class EnemyController extends Component {
             return;
         }
 
+        const burstCells = new Set<string>();
         for (let i = this.cells.length - 1; i >= 0; i--) {
             const cell = this.cells[i];
             const touched = this.getTouchedCells(cell.node);
-            const hitCell = touched.find(gridCell => this.grid!.isFilledGrid(gridCell.x, gridCell.y));
+            const hitCell = touched.find(gridCell => this.grid!.isSettledFilledGrid(gridCell.x, gridCell.y));
             if (!hitCell) continue;
             const delay = Math.random() * 0.12;
-            this.spawnDestroyBurst(cell.node, delay);
+            if (!this.hasNearbyBurst(hitCell, burstCells)) {
+                this.spawnDestroyBurst(cell.node, delay);
+                burstCells.add(`${hitCell.x},${hitCell.y}`);
+            }
             this.playDestroy(cell.node, delay);
             this.cells.splice(i, 1);
             if (this.cells.length === 0 && !this.destroyed) {
@@ -119,6 +124,14 @@ export class EnemyController extends Component {
                 this.onDestroyed?.(hitCell);
             }
         }
+    }
+
+    private hasNearbyBurst(cell: Vec2, burstCells: Set<string>): boolean {
+        return burstCells.has(`${cell.x},${cell.y}`)
+            || burstCells.has(`${cell.x + 1},${cell.y}`)
+            || burstCells.has(`${cell.x - 1},${cell.y}`)
+            || burstCells.has(`${cell.x},${cell.y + 1}`)
+            || burstCells.has(`${cell.x},${cell.y - 1}`);
     }
 
     private getTouchedCells(node: Node): Vec2[] {
@@ -148,24 +161,16 @@ export class EnemyController extends Component {
 
         const start = node.worldPosition.clone();
         start.y += 0.45;
-        for (let i = 0; i < 12; i++) {
-            const particle = instantiate(this.enemyCellPrefab);
-            particle.setParent(this.node.parent);
-            particle.setWorldPosition(start);
-            particle.setScale(0.5, 0.5, 0.5);
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 0.55 + Math.random() * 0.55;
-            const target = new Vec3(
-                particle.position.x + Math.cos(angle) * distance,
-                particle.position.y + 0.35 + Math.random() * 0.45,
-                particle.position.z + Math.sin(angle) * distance,
-            );
-            tween(particle)
-                .delay(delay)
-                .to(0.22, { position: target, scale: new Vec3(0, 0, 0) }, { easing: 'quadOut' })
-                .call(() => particle.destroy())
-                .start();
-        }
+        spawnPrefabBurst(this.enemyCellPrefab, this.node.parent, start, {
+            count: 12,
+            scale: 0.5,
+            minRadius: 0.55,
+            maxRadius: 1.1,
+            minHeight: 0.35,
+            maxHeight: 0.8,
+            minDuration: 0.22,
+            maxDuration: 0.22,
+        }, delay);
     }
 
     private playDestroy(node: Node, delay: number): void {
