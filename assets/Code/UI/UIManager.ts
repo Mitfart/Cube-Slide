@@ -1,4 +1,4 @@
-import { _decorator, Camera, Component, instantiate, Label, Node, Prefab, ProgressBar, tween, Tween, Vec3 } from 'cc';
+import { _decorator, Camera, Component, instantiate, Label, Node, Prefab, ProgressBar, tween, Tween, UIOpacity, Vec3 } from 'cc';
 import { UI_Screen } from '../../Cocos_Engine/General/Code/ui/UI_Screen';
 const { ccclass, property } = _decorator;
 
@@ -34,11 +34,31 @@ export class UIManager extends Component {
     @property(Prefab)
     public coinFlyPrefab: Prefab | null = null;
 
+    @property(Prefab)
+    public hurtUiPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    public hurtEffectPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    public lifesPrefab: Prefab | null = null;
+
+    @property(Prefab)
+    public lifePrefab: Prefab | null = null;
+
+    @property([String])
+    public hurtMessages: string[] = [];
+
     @property(Node)
     public uiRoot: Node | null = null;
 
     private endScreen: UI_Screen | null = null;
     private confettiEffect: Node | null = null;
+    private hurtUi: Node | null = null;
+    private hurtEffect: Node | null = null;
+    private lifes: Node | null = null;
+    private readonly lifeNodes: Node[] = [];
+    private hurtMessageIndex = 0;
     private targetProgress = -1;
     private coins = 0;
 
@@ -56,6 +76,67 @@ export class UIManager extends Component {
 
     public showFail(): void {
         this.showEndScreen(this.failScreenPrefab, 'failScreenPrefab');
+    }
+
+    public showHurt(): void {
+        this.showHurtEffect();
+        this.scheduleOnce(() => this.showHurtUi(), 0.12);
+    }
+
+    public hideHurt(): void {
+        if (!this.hurtUi) {
+            return;
+        }
+
+        const hurtUi = this.hurtUi;
+        this.hurtUi = null;
+        const opacity = hurtUi.getComponent(UIOpacity) ?? hurtUi.addComponent(UIOpacity);
+        tween(opacity)
+            .to(0.12, { opacity: 0 }, { easing: 'quadIn' })
+            .call(() => hurtUi.destroy())
+            .start();
+    }
+
+    public setupLives(maxLives: number): void {
+        if (this.lifes) {
+            this.lifes.destroy();
+        }
+        this.lifeNodes.length = 0;
+        if (!this.lifesPrefab) {
+            console.error('[UIManager] Missing lifesPrefab');
+            return;
+        }
+        if (!this.lifePrefab) {
+            console.error('[UIManager] Missing lifePrefab');
+            return;
+        }
+
+        this.lifes = instantiate(this.lifesPrefab);
+        this.lifes.setParent(this.uiRoot ?? this.node);
+        this.setVisibleUiLayer(this.lifes);
+        this.lifes.setPosition(0, 0, 0);
+        for (let i = 0; i < maxLives; i++) {
+            const life = instantiate(this.lifePrefab);
+            life.setParent(this.lifes);
+            this.setVisibleUiLayer(life);
+            this.lifeNodes.push(life);
+        }
+    }
+
+    public popLife(): void {
+        const life = this.lifeNodes.pop();
+        if (!life) {
+            return;
+        }
+
+        const opacity = life.getComponent(UIOpacity) ?? life.addComponent(UIOpacity);
+        opacity.opacity = 255;
+        tween(life)
+            .to(0.12, { scale: new Vec3(1.7, 1.7, 1.7) }, { easing: 'quadOut' })
+            .start();
+        tween(opacity)
+            .to(0.12, { opacity: 0 }, { easing: 'quadOut' })
+            .start();
     }
 
     public collectCoin(coin: Node, camera: Camera): void {
@@ -154,6 +235,93 @@ export class UIManager extends Component {
             this.confettiEffect.destroy();
             this.confettiEffect = null;
         }
+        if (this.hurtUi) {
+            this.hurtUi.destroy();
+            this.hurtUi = null;
+        }
+        if (this.hurtEffect) {
+            this.hurtEffect.destroy();
+            this.hurtEffect = null;
+        }
+        if (this.lifes) {
+            this.lifes.destroy();
+            this.lifes = null;
+        }
+        this.lifeNodes.length = 0;
+        this.hurtMessageIndex = 0;
+    }
+
+    private showHurtUi(): void {
+        if (!this.hurtUiPrefab) {
+            console.error('[UIManager] Missing hurtUiPrefab');
+            return;
+        }
+
+        if (this.hurtUi) {
+            this.hurtUi.destroy();
+        }
+        this.hurtUi = instantiate(this.hurtUiPrefab);
+        this.hurtUi.setParent(this.uiRoot ?? this.node);
+        this.setVisibleUiLayer(this.hurtUi);
+        this.hurtUi.setPosition(0, 0, 0);
+        const label = this.findLabel(this.hurtUi);
+        if (!label) {
+            console.error('[UIManager] Missing Label in hurtUiPrefab');
+            return;
+        }
+        label.string = this.hurtMessages[this.hurtMessageIndex] ?? label.string;
+        this.hurtMessageIndex++;
+        const opacity = this.hurtUi.getComponent(UIOpacity) ?? this.hurtUi.addComponent(UIOpacity);
+        opacity.opacity = 0;
+        tween(opacity)
+            .to(0.08, { opacity: 255 }, { easing: 'quadOut' })
+            .start();
+    }
+
+    private showHurtEffect(): void {
+        if (!this.hurtEffectPrefab) {
+            console.error('[UIManager] Missing hurtEffectPrefab');
+            return;
+        }
+
+        if (this.hurtEffect) {
+            this.hurtEffect.destroy();
+        }
+        this.hurtEffect = instantiate(this.hurtEffectPrefab);
+        this.hurtEffect.setParent(this.uiRoot ?? this.node);
+        this.setVisibleUiLayer(this.hurtEffect);
+        this.hurtEffect.setPosition(0, 0, 0);
+        const opacity = this.hurtEffect.getComponent(UIOpacity) ?? this.hurtEffect.addComponent(UIOpacity);
+        opacity.opacity = 0;
+        tween(opacity)
+            .to(0.05, { opacity: 255 }, { easing: 'quadOut' })
+            .to(0.35, { opacity: 0 }, { easing: 'quadIn' })
+            .call(() => {
+                this.hurtEffect?.destroy();
+                this.hurtEffect = null;
+            })
+            .start();
+    }
+
+    private setVisibleUiLayer(node: Node): void {
+        node.layer = this.levelLabel?.node.layer ?? 33554432;
+        for (const child of node.children) {
+            this.setVisibleUiLayer(child);
+        }
+    }
+
+    private findLabel(node: Node): Label | null {
+        const label = node.getComponent(Label);
+        if (label) {
+            return label;
+        }
+        for (const child of node.children) {
+            const childLabel = this.findLabel(child);
+            if (childLabel) {
+                return childLabel;
+            }
+        }
+        return null;
     }
 
     private showEndScreen(prefab: Prefab | null, fieldName: string): void {
@@ -185,5 +353,4 @@ export class UIManager extends Component {
         this.confettiEffect.setPosition(0, 0, 0);
         this.confettiEffect.setScale(new Vec3(5, 5, 5));
     }
-
 }

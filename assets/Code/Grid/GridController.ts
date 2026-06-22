@@ -334,6 +334,32 @@ export class GridController extends Component {
         this.fillClosedAreas(playerCell, fillPrefab);
     }
 
+    public clearPaintForLevel(cell: Vec2, keepFilledCell: Vec2 | null = null): void {
+        const levelIndex = this.getLevelIndex(cell);
+        if (levelIndex < 0) {
+            return;
+        }
+
+        const keepKey = keepFilledCell ? this.key(keepFilledCell.x, keepFilledCell.y) : '';
+        for (const key of this.levelFillableTiles[levelIndex]) {
+            if (key === keepKey) {
+                this.filledTiles.add(key);
+                continue;
+            }
+            const trail = this.trailNodes.get(key);
+            if (trail) {
+                trail.destroy();
+                this.trailNodes.delete(key);
+            }
+            const fill = this.fillNodes.get(key);
+            if (fill) {
+                fill.destroy();
+                this.fillNodes.delete(key);
+            }
+            this.filledTiles.delete(key);
+        }
+    }
+
     public fillRemainingLevel(cell: Vec2, fillPrefab: Prefab): void {
         const levelIndex = this.getLevelIndex(cell);
         if (levelIndex < 0) {

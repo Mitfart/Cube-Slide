@@ -16,6 +16,10 @@ export class PlayerController extends Component {
     @property(Prefab)
     public playerFill: Prefab | null = null;
 
+    @property
+    public maxLives = 3;
+
+    private currentLives = 3;
     private readonly snapBackThreshold = 0.25;
     private touchStart = new Vec2();
     private moving = false;
@@ -24,6 +28,7 @@ export class PlayerController extends Component {
     private hasTrail = false;
     private scriptedMove = false;
     private pendingLevelCompleteCell: Vec2 | null = null;
+    private inputLocked = false;
     public onGameEnd: (() => void) | null = null;
 
     protected onEnable(): void {
@@ -42,6 +47,7 @@ export class PlayerController extends Component {
         this.hasTrail = false;
         this.scriptedMove = false;
         this.pendingLevelCompleteCell = null;
+        this.inputLocked = false;
     }
 
     protected update(): void {
@@ -57,6 +63,35 @@ export class PlayerController extends Component {
 
     public setGrid(grid: GridController): void {
         this.grid = grid;
+        this.currentLives = this.maxLives;
+        this.fillSpawnCell();
+    }
+
+    public takeDamage(): boolean {
+        this.currentLives = Math.max(0, this.currentLives - 1);
+        return this.currentLives <= 0;
+    }
+
+    public getCurrentLives(): number {
+        return this.currentLives;
+    }
+
+    public hideForDamage(): void {
+        Tween.stopAllByTarget(this.node);
+        this.moving = false;
+        this.direction.set(0, 0);
+        this.pendingLevelCompleteCell = null;
+        this.scriptedMove = false;
+        this.inputLocked = true;
+        this.node.active = false;
+    }
+
+    public respawnAfterDamageAt(position: Vec3): void {
+        this.node.setPosition(position);
+        this.lastCell.set(Number.NaN, Number.NaN);
+        this.hasTrail = false;
+        this.node.active = true;
+        this.inputLocked = false;
         this.fillSpawnCell();
     }
 
@@ -81,7 +116,7 @@ export class PlayerController extends Component {
     }
 
     private onTouchEnd(event: EventTouch): void {
-        if (this.scriptedMove || this.pendingLevelCompleteCell) {
+        if (this.inputLocked || this.scriptedMove || this.pendingLevelCompleteCell) {
             return;
         }
 

@@ -34,6 +34,7 @@ export class GameManager extends Component {
     private player: Node | null = null;
     private readonly enemies: EnemyController[] = [];
     private ended = false;
+    private hurtLocked = false;
     private currentLevels: LevelConfig[] = [];
     private baseOrthoHeight = 0;
 
@@ -66,6 +67,7 @@ export class GameManager extends Component {
 
     public buildLevels(levels: LevelConfig[]): void {
         this.ended = false;
+        this.hurtLocked = false;
         if (!this.uiManager) {
             console.error('[GameManager] Missing uiManager');
             return;
@@ -136,6 +138,7 @@ export class GameManager extends Component {
         }
         playerController.onGameEnd = () => this.endGame();
         playerController.setGrid(this.grid);
+        this.uiManager?.setupLives(playerController.maxLives);
     }
 
     private spawnEnemies(levels: LevelConfig[]): void {
@@ -277,11 +280,53 @@ export class GameManager extends Component {
         for (const enemy of this.enemies) {
             for (const cell of enemy.getOccupiedCells()) {
                 if (this.grid.hasTrailGrid(cell.x, cell.y) || (playerController?.isActiveSlide() && playerCell && cell.x === playerCell.x && cell.y === playerCell.y)) {
-                    this.failGame();
+                    this.handlePlayerHit(playerController);
                     return;
                 }
             }
         }
+    }
+
+    private handlePlayerHit(playerController: PlayerController | null | undefined): void {
+        if (this.hurtLocked) {
+            return;
+        }
+        if (!playerController) {
+            console.error('[GameManager] Missing PlayerController');
+            return;
+        }
+
+        const failed = playerController.takeDamage();
+        this.uiManager?.popLife();
+        if (failed) {
+            this.failGame();
+            return;
+        }
+
+        if (!this.uiManager) {
+            console.error('[GameManager] Missing uiManager');
+            return;
+        }
+        if (!this.grid) {
+            console.error('[GameManager] Missing grid');
+            return;
+        }
+
+        const hitCell = playerController.getGridCell();
+        const levelIndex = hitCell ? this.grid.getNearestBuiltLevelIndex(hitCell.y) : 0;
+        const spawn = this.grid.getBuiltLevelSpawn(levelIndex) ?? this.grid.getBuiltLevelSpawn(0);
+        if (!hitCell || !spawn) {
+            console.error('[GameManager] Missing damage respawn data');
+            return;
+        }
+
+        this.hurtLocked = true;
+        playerController.hideForDamage();
+        this.grid.clearPaintForLevel(hitCell, this.grid.localToGrid(spawn));
+        this.uiManager.showHurt();
+        this.scheduleOnce(() => playerController.respawnAfterDamageAt(spawn), 0.45);
+        this.scheduleOnce(() => this.uiManager?.hideHurt(), 1.7);
+        this.scheduleOnce(() => this.hurtLocked = false, 1);
     }
 
     private updateLevelProgress(): void {
