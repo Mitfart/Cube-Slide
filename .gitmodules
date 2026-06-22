@@ -1,0 +1,3 @@
+[submodule "assets/Cocos_Engine"]
+	path = assets/Cocos_Engine
+	url = https://github.com/Mitfart/Cocos_Engine
