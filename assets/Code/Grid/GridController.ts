@@ -27,6 +27,9 @@ export class GridController extends Component {
     @property(Prefab)
     public levelLock: Prefab | null = null;
 
+    @property(Prefab)
+    public coinPrefab: Prefab | null = null;
+
     private readonly cellSize = 1;
     private readonly spawned: Node[] = [];
     private readonly walkableTiles = new Set<string>();
@@ -34,14 +37,17 @@ export class GridController extends Component {
     private readonly filledTiles = new Set<string>();
     private readonly trailNodes = new Map<string, Node>();
     private readonly fillNodes = new Map<string, Node>();
+    private readonly coinNodes = new Map<string, Node>();
     private readonly levelLockNodes: (Node | null)[] = [];
     private readonly levelFillableTiles: Set<string>[] = [];
+    private readonly levelProgressIgnoredTiles: Set<string>[] = [];
     private readonly levelBoundaryTiles: Set<string>[] = [];
     private readonly levelTiles: Set<string>[] = [];
     private readonly levelExitZ: number[] = [];
     private readonly levelCenters: Vec3[] = [];
     private readonly levelSpawns: Vec3[] = [];
     private readonly cameraTransitionZ: Vec2[] = [];
+    public onCoinCollected: ((coin: Node) => void) | null = null;
 
     public buildDefaultLevel(): void {
         this.buildLevels(LEVELS);
@@ -69,7 +75,9 @@ export class GridController extends Component {
             const boundary = new Set<string>();
             const levelTiles = new Set<string>();
             const bounds = this.addRows(tiles, level.rows, level.tunnelLength, zOffset, i > 0, fillable, boundary, levelTiles);
+            this.spawnCoins(level, zOffset);
             this.levelFillableTiles.push(fillable);
+            this.levelProgressIgnoredTiles.push(new Set<string>());
             this.levelBoundaryTiles.push(boundary);
             this.levelTiles.push(levelTiles);
             this.levelExitZ.push(bounds.tunnelMinZ - 2);
@@ -114,6 +122,28 @@ export class GridController extends Component {
         return this.levelCenters.length;
     }
 
+    public getLevelProgress(levelIndex: number): number {
+        const tiles = this.levelFillableTiles[levelIndex];
+        if (!tiles || tiles.size === 0) {
+            return 0;
+        }
+
+        const ignored = this.levelProgressIgnoredTiles[levelIndex] ?? new Set<string>();
+        const total = tiles.size - ignored.size;
+        if (total <= 0) {
+            return 0;
+        }
+
+        let filled = 0;
+        for (const key of tiles) {
+            if (ignored.has(key)) continue;
+            if (this.filledTiles.has(key) || this.fillNodes.has(key) || this.trailNodes.has(key)) {
+                filled++;
+            }
+        }
+        return Math.max(0, Math.min(1, filled / total));
+    }
+
     public getNearestBuiltLevelIndex(z: number): number {
         let bestIndex = 0;
         let bestDistance = Number.MAX_SAFE_INTEGER;
@@ -146,8 +176,10 @@ export class GridController extends Component {
         this.filledTiles.clear();
         this.trailNodes.clear();
         this.fillNodes.clear();
+        this.coinNodes.clear();
         this.levelLockNodes.length = 0;
         this.levelFillableTiles.length = 0;
+        this.levelProgressIgnoredTiles.length = 0;
         this.levelBoundaryTiles.length = 0;
         this.levelTiles.length = 0;
         this.levelExitZ.length = 0;
@@ -236,7 +268,18 @@ export class GridController extends Component {
         }
     }
 
+    public collectCoinAt(x: number, z: number): void {
+        const coin = this.takeCoin(this.key(x, z));
+        if (coin) {
+            this.onCoinCollected?.(coin);
+        }
+    }
+
     public fillCell(x: number, z: number, fillPrefab: Prefab): void {
+        const levelIndex = this.getLevelIndex(new Vec2(x, z));
+        if (levelIndex >= 0) {
+            this.levelProgressIgnoredTiles[levelIndex].add(this.key(x, z));
+        }
         this.setFilled(x, z, fillPrefab, true, 0, true);
     }
 
@@ -335,6 +378,23 @@ export class GridController extends Component {
         }
 
         return { tunnelMinZ: offsetZ - tunnelLength, tunnelStartZ: offsetZ };
+    }
+
+    private collectCoinKey(key: string): void {
+        const coin = this.takeCoin(key);
+        if (coin) {
+            this.onCoinCollected?.(coin);
+        }
+    }
+
+    private takeCoin(key: string): Node | null {
+        const coin = this.coinNodes.get(key);
+        if (!coin) {
+            return null;
+        }
+
+        this.coinNodes.delete(key);
+        return coin;
     }
 
     private spawnTunnelLock(x: number, z: number): Node | null {
@@ -463,11 +523,15 @@ export class GridController extends Component {
         const fill = this.spawnPrefab(prefab, x, z);
         this.fillNodes.set(key, fill);
         if (animate) {
-            this.playFillSpawn(fill, delay, () => this.filledTiles.add(key));
+            this.playFillSpawn(fill, delay, () => {
+                this.filledTiles.add(key);
+                this.collectCoinKey(key);
+            });
             return;
         }
 
         this.filledTiles.add(key);
+        this.collectCoinKey(key);
     }
 
     private playTrailSpawn(node: Node): void {
@@ -609,9 +673,30 @@ export class GridController extends Component {
     }
 
     private getPrefab(symbol: string): Prefab | null {
-        if (symbol === '.') return this.levelFloor;
+        if (symbol === '.' || symbol === 'C') return this.levelFloor;
         if (symbol === 'L') return this.levelLock;
         return null;
+    }
+
+    private spawnCoins(level: LevelConfig, zOffset: number): void {
+        if (!this.coinPrefab) {
+            return;
+        }
+
+        const bounds = this.getLevelBounds(level.rows, level.tunnelLength);
+        const offsetX = bounds.offsetX;
+        const offsetZ = bounds.offsetZ + zOffset;
+
+        for (let y = 0; y < level.rows.length; y++) {
+            const row = level.rows[y];
+            for (let x = 0; x < row.length; x++) {
+                if (row[x] === 'C') {
+                    const gridX = offsetX + x;
+                    const gridZ = offsetZ + y;
+                    this.coinNodes.set(this.key(gridX, gridZ), this.spawnPrefab(this.coinPrefab, gridX, gridZ));
+                }
+            }
+        }
     }
 
     private getLevelBounds(rows: string[], tunnelLength: number): LevelBounds {
@@ -656,6 +741,10 @@ export class GridController extends Component {
         }
         if (!this.levelLock) {
             console.error('[GridController] Missing levelLock');
+            return false;
+        }
+        if (!this.coinPrefab && level.rows.some(row => row.includes('C'))) {
+            console.error('[GridController] Missing coinPrefab');
             return false;
         }
         return true;

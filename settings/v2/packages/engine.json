@@ -15,7 +15,7 @@
             "_value": true
           },
           "gfx-webgpu": {
-            "_value": true
+            "_value": false
           },
           "animation": {
             "_value": true

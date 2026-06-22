@@ -55,7 +55,9 @@ export class GameManager extends Component {
         }
 
         this.updateCamera();
+        this.updateLevelProgress();
         this.checkEnemyHit();
+        this.checkCoinCollect();
     }
 
     public buildLevel(level: LevelConfig): void {
@@ -79,10 +81,18 @@ export class GameManager extends Component {
         }
 
         this.currentLevels = levels;
+        this.grid.onCoinCollected = coin => {
+            if (!this.camera || !this.uiManager) {
+                coin.destroy();
+                return;
+            }
+            this.uiManager.collectCoin(coin, this.camera);
+        };
         this.grid.buildLevels(levels);
         this.spawnPlayer(levels[0]);
         this.spawnEnemies(levels);
         this.updateCamera();
+        this.updateLevelProgress();
     }
 
     public clearLevel(): void {
@@ -91,6 +101,7 @@ export class GameManager extends Component {
             return;
         }
 
+        this.grid.onCoinCollected = null;
         this.grid.clearLevel();
         this.currentLevels = [];
         if (this.player) {
@@ -241,6 +252,20 @@ export class GameManager extends Component {
         Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
     }
 
+    private checkCoinCollect(): void {
+        if (!this.grid || !this.player || !this.camera || !this.uiManager || this.ended) {
+            return;
+        }
+
+        const playerController = this.player.getComponent(PlayerController);
+        const cell = playerController?.getGridCell();
+        if (!cell) {
+            return;
+        }
+
+        this.grid.collectCoinAt(cell.x, cell.y);
+    }
+
     private checkEnemyHit(): void {
         if (!this.grid || !this.player || this.ended) {
             return;
@@ -257,6 +282,20 @@ export class GameManager extends Component {
                 }
             }
         }
+    }
+
+    private updateLevelProgress(): void {
+        if (!this.grid) {
+            console.error('[GameManager] Missing grid');
+            return;
+        }
+        if (!this.uiManager) {
+            console.error('[GameManager] Missing uiManager');
+            return;
+        }
+
+        const levelIndex = this.getCameraTarget().levelIndex;
+        this.uiManager.setLevelProgress(levelIndex + 1, this.grid.getLevelProgress(levelIndex));
     }
 
     private updateCamera(): void {
