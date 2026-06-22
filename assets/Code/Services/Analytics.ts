@@ -25,25 +25,21 @@ export class AnalyticEvents {
 
 @ccclass('Analytics')
 export class Analytics {
-    private static emitedEvents: Set<string> = new Set();
-    
+    private static readonly emittedEvents = new Set<string>();
 
-    public static emit(eventName: string) {
-        if (this.emitedEvents.has(eventName)) {
+    public static emit(eventName: string): void {
+        if (this.emittedEvents.has(eventName)) {
             return;
-        } else {
-            this.emitedEvents.add(eventName);
         }
+        this.emittedEvents.add(eventName);
 
         const playable = window as PlayableWindow;
-
-        if (typeof playable.ALPlayableAnalytics !== 'undefined' && typeof playable.ALPlayableAnalytics.trackEvent === 'function') {
+        if (typeof playable.ALPlayableAnalytics?.trackEvent === 'function') {
             playable.ALPlayableAnalytics.trackEvent(eventName);
-        }
-        else if (typeof playable.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+        } else if (typeof playable.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
             playable.dispatchEvent(new CustomEvent(eventName));
         }
-        
+
         console.log(`[Analytics] ${eventName}`);
     }
 }

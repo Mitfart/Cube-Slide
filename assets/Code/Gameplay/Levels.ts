@@ -76,12 +76,3 @@ export const LEVELS: LevelConfig[] = [
     },
 ];
 
-// Non-playable end cap after the main level.
-export const EMPTY_LEVEL: LevelConfig = {
-    rows: [],
-    tunnelLength: 0,
-    cameraOffsetZPortrait: 0,
-    cameraOffsetZLandscape: 0,
-    cameraZoomPortrait: 1,
-    cameraZoomLandscape: 1,
-};

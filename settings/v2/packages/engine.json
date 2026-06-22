@@ -200,7 +200,6 @@
           "custom-pipeline",
           "gfx-webgl",
           "gfx-webgl2",
-          "gfx-webgpu",
           "graphics",
           "mask",
           "particle",
