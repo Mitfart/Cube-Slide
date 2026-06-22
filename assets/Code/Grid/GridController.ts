@@ -1,5 +1,6 @@
 import { _decorator, Component, instantiate, Node, Prefab, Vec2, Vec3, tween } from 'cc';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
+import { SoundManager } from '../Services/SoundManager';
 const { ccclass, property } = _decorator;
 
 interface LevelBounds {
@@ -30,6 +31,9 @@ export class GridController extends Component {
     @property(Prefab)
     public coinPrefab: Prefab | null = null;
 
+    @property({ type: SoundManager, visible: false })
+    public soundManager: SoundManager | null = null;
+
     private readonly cellSize = 1;
     private readonly spawned: Node[] = [];
     private readonly walkableTiles = new Set<string>();
@@ -48,6 +52,8 @@ export class GridController extends Component {
     private readonly levelSpawns: Vec3[] = [];
     private readonly cameraTransitionZ: Vec2[] = [];
     public onCoinCollected: ((coin: Node) => void) | null = null;
+    private fillSoundActive = false;
+    private fillSoundTicket = 0;
 
     public buildDefaultLevel(): void {
         this.buildLevels(LEVELS);
@@ -192,6 +198,10 @@ export class GridController extends Component {
         return this.cellSize;
     }
 
+    public setSoundManager(soundManager: SoundManager | null): void {
+        this.soundManager = soundManager;
+    }
+
     public gridToLocal(x: number, z: number): Vec3 {
         return new Vec3(x * this.cellSize, 0, z * this.cellSize);
     }
@@ -271,6 +281,7 @@ export class GridController extends Component {
     public collectCoinAt(x: number, z: number): void {
         const coin = this.takeCoin(this.key(x, z));
         if (coin) {
+            (this.soundManager ?? SoundManager.current)?.playCoin(coin.worldPosition);
             this.onCoinCollected?.(coin);
         }
     }
@@ -320,12 +331,16 @@ export class GridController extends Component {
         }
 
         const trail = this.spawnPrefab(prefab, x, z);
+        (this.soundManager ?? SoundManager.current)?.playCellTrail(trail.worldPosition);
         this.playTrailSpawn(trail);
         this.trailNodes.set(key, trail);
     }
 
     public commitTrailToFill(playerCell: Vec2, fillPrefab: Prefab): void {
         const trailKeys = [...this.trailNodes.keys()];
+        if (trailKeys.length > 0) {
+            this.playFillSounds(playerCell, trailKeys.length * 0.015 + 0.16);
+        }
         for (let i = 0; i < trailKeys.length; i++) {
             const [x, z] = this.parseKey(trailKeys[i]);
             this.setFilled(x, z, fillPrefab, true, i * 0.015);
@@ -368,6 +383,9 @@ export class GridController extends Component {
 
         const keys = [...this.levelFillableTiles[levelIndex]].filter(key => !this.filledTiles.has(key) && !this.fillNodes.has(key));
         const delays = this.getFillDelays(keys, cell);
+        if (keys.length > 0) {
+            this.playFillSounds(cell, this.getMaxFillDelay(keys, delays) + 0.16);
+        }
         for (const key of keys) {
             const [x, z] = this.parseKey(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
@@ -587,6 +605,28 @@ export class GridController extends Component {
             .start();
     }
 
+    private playFillSounds(cell: Vec2, duration: number): void {
+        const position = this.gridToLocal(cell.x, cell.y);
+        Vec3.add(position, position, this.node.worldPosition);
+        if (!this.fillSoundActive) {
+            this.fillSoundActive = true;
+            (this.soundManager ?? SoundManager.current)?.playCellsFillStart(position);
+        }
+
+        const ticket = ++this.fillSoundTicket;
+        this.scheduleOnce(() => {
+            if (ticket !== this.fillSoundTicket) {
+                return;
+            }
+            this.fillSoundActive = false;
+            (this.soundManager ?? SoundManager.current)?.stopCellsFillStart();
+        }, duration);
+    }
+
+    private getMaxFillDelay(keys: string[], delays: Map<string, number>): number {
+        return keys.reduce((max, key) => Math.max(max, delays.get(key) ?? 0), 0) * 0.04;
+    }
+
     private fillClosedAreas(playerCell: Vec2, fillPrefab: Prefab): void {
         const levelIndex = this.getLevelIndex(playerCell);
         if (levelIndex < 0) {
@@ -616,6 +656,9 @@ export class GridController extends Component {
 
         const inner = [...this.levelFillableTiles[levelIndex]].filter(key => !this.filledTiles.has(key) && !outside.has(key));
         const delays = this.getFillDelays(inner, playerCell);
+        if (inner.length > 0) {
+            this.playFillSounds(playerCell, this.getMaxFillDelay(inner, delays) + 0.16);
+        }
         for (const key of inner) {
             const [x, z] = this.parseKey(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);

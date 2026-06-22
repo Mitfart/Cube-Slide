@@ -5,6 +5,7 @@ import { GridController } from '../Grid/GridController';
 import { EnemyController } from '../Enemy/EnemyController';
 import { PlayerController } from '../Player/PlayerController';
 import { Analytics, AnalyticEvents } from '../Services/Analytics';
+import { SoundManager } from '../Services/SoundManager';
 import { UIManager } from '../UI/UIManager';
 const { ccclass, property } = _decorator;
 
@@ -30,6 +31,9 @@ export class GameManager extends Component {
 
     @property(UIManager)
     public uiManager: UIManager | null = null;
+
+    @property(SoundManager)
+    public soundManager: SoundManager | null = null;
 
     private player: Node | null = null;
     private readonly enemies: EnemyController[] = [];
@@ -83,6 +87,7 @@ export class GameManager extends Component {
         }
 
         this.currentLevels = levels;
+        this.grid.setSoundManager(this.soundManager);
         this.grid.onCoinCollected = coin => {
             if (!this.camera || !this.uiManager) {
                 coin.destroy();
@@ -161,7 +166,7 @@ export class GameManager extends Component {
             const enemy = node.addComponent(EnemyController);
             const start = this.getEnemyCell(i, level.enemyPositionStart, level.enemyShape) ?? this.grid.localToGrid(this.grid.getBuiltLevelCenter(i) ?? new Vec3());
             const end = this.getEnemyCell(i, level.enemyPositionEnd, level.enemyShape);
-            enemy.setup(this.grid, this.enemyPrefab, level.enemyShape, start, end ?? undefined);
+            enemy.setup(this.grid, this.enemyPrefab, level.enemyShape, start, end ?? undefined, this.soundManager);
             enemy.onDestroyed = cell => this.fillLevelAfterEnemyDestroyed(cell);
             this.enemies.push(enemy);
         }
@@ -208,6 +213,9 @@ export class GameManager extends Component {
         }
 
         this.ended = true;
+        if (this.player) {
+            (this.soundManager ?? SoundManager.current)?.playWin(this.player.worldPosition);
+        }
         this.playConfetti();
         this.uiManager.showWin();
         Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
@@ -296,6 +304,7 @@ export class GameManager extends Component {
             return;
         }
 
+        (this.soundManager ?? SoundManager.current)?.playEnemyHit(playerController.node.worldPosition);
         const failed = playerController.takeDamage();
         this.uiManager?.popLife();
         if (failed) {

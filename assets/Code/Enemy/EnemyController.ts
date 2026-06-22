@@ -1,6 +1,7 @@
 import { _decorator, Component, Node, Prefab, Vec2, Vec3, instantiate, tween } from 'cc';
 import { spawnPrefabBurst } from '../Effects/PrefabBurst';
 import { GridController } from '../Grid/GridController';
+import { SoundManager } from '../Services/SoundManager';
 const { ccclass, property } = _decorator;
 
 interface EnemyCell {
@@ -19,6 +20,9 @@ export class EnemyController extends Component {
     @property
     public cellsPerSecond = 3;
 
+    @property({ type: SoundManager, visible: false })
+    public soundManager: SoundManager | null = null;
+
     private readonly cells: EnemyCell[] = [];
     private start = new Vec2();
     private end = new Vec2();
@@ -26,9 +30,10 @@ export class EnemyController extends Component {
     private destroyed = false;
     public onDestroyed: ((cell: Vec2) => void) | null = null;
 
-    public setup(grid: GridController, enemyCellPrefab: Prefab, shape: number[][], start: Vec2, end?: Vec2): void {
+    public setup(grid: GridController, enemyCellPrefab: Prefab, shape: number[][], start: Vec2, end?: Vec2, soundManager: SoundManager | null = null): void {
         this.grid = grid;
         this.enemyCellPrefab = enemyCellPrefab;
+        this.soundManager = soundManager;
         this.start = start.clone();
         this.end = end?.clone() ?? start.clone();
         this.buildShape(shape);
@@ -114,6 +119,8 @@ export class EnemyController extends Component {
             if (!hitCell) continue;
             const delay = Math.random() * 0.12;
             if (!this.hasNearbyBurst(hitCell, burstCells)) {
+                const soundPosition = cell.node.worldPosition.clone();
+                this.scheduleOnce(() => (this.soundManager ?? SoundManager.current)?.playEnemyDestroy(soundPosition), delay);
                 this.spawnDestroyBurst(cell.node, delay);
                 burstCells.add(`${hitCell.x},${hitCell.y}`);
             }
