@@ -19,6 +19,8 @@ export class PlayerController extends Component {
     @property
     public maxLives = 3;
 
+    public minimumDragDistance = 0;
+
     private currentLives = 3;
     private readonly snapBackThreshold = 0.25;
     private touchStart = new Vec2();
@@ -124,7 +126,7 @@ export class PlayerController extends Component {
         if (!this.hasRequiredFields()) {
             return;
         }
-        if (delta.length() < this.grid!.getCellSize() * 0.5) {
+        if (delta.length() < this.minimumDragDistance) {
             return;
         }
 

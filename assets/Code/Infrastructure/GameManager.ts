@@ -1,5 +1,4 @@
-import { _decorator, Camera, Component, instantiate, Node, Prefab, Vec2, Vec3, view } from 'cc';
-import { spawnPrefabBurst } from '../Effects/PrefabBurst';
+import { _decorator, Camera, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, Vec2, Vec3, view } from 'cc';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
 import { GridController } from '../Grid/GridController';
 import { EnemyController } from '../Enemy/EnemyController';
@@ -26,6 +25,12 @@ export class GameManager extends Component {
     @property(Prefab)
     public enemyPrefab: Prefab | null = null;
 
+    @property(Prefab)
+    public enemyDestroyParticlePrefab: Prefab | null = null;
+
+    @property(Prefab)
+    public confettiEffectPrefab: Prefab | null = null;
+
     @property(Camera)
     public camera: Camera | null = null;
 
@@ -35,19 +40,24 @@ export class GameManager extends Component {
     @property(SoundManager)
     public soundManager: SoundManager | null = null;
 
+    @property
+    public minimumDragDistance = 40;
+
     private player: Node | null = null;
     private readonly enemies: EnemyController[] = [];
     private ended = false;
     private hurtLocked = false;
     private currentLevels: LevelConfig[] = [];
     private baseOrthoHeight = 0;
+    private baseCameraLocalY = 0;
+    private baseCameraPitch = 0;
 
     protected start(): void {
         this.startGame();
     }
 
     public startGame(): void {
-        this.buildLevels(LEVELS);
+        this.buildLevel(LEVELS[0]);
     }
 
     public restartGame(): void {
@@ -133,7 +143,7 @@ export class GameManager extends Component {
         }
 
         this.player = instantiate(this.playerPrefab);
-        this.player.setParent(this.grid.node);
+        this.player.setParent(this.grid.node, false);
         this.player.setPosition(this.grid.getBuiltLevelSpawn(0) ?? this.grid.getBuiltLevelCenter(0) ?? this.grid.getLevelCenter(level));
 
         const playerController = this.player.getComponent(PlayerController);
@@ -142,6 +152,7 @@ export class GameManager extends Component {
             return;
         }
         playerController.onGameEnd = () => this.endGame();
+        playerController.minimumDragDistance = this.minimumDragDistance;
         playerController.setGrid(this.grid);
         this.uiManager?.setupLives(playerController.maxLives);
     }
@@ -162,12 +173,15 @@ export class GameManager extends Component {
             if (!level.enemyShape) continue;
 
             const node = new Node(`Enemy_${i}`);
-            node.setParent(this.grid.node);
+            node.setParent(this.grid.node, false);
             const enemy = node.addComponent(EnemyController);
             const start = this.getEnemyCell(i, level.enemyPositionStart, level.enemyShape) ?? this.grid.localToGrid(this.grid.getBuiltLevelCenter(i) ?? new Vec3());
             const end = this.getEnemyCell(i, level.enemyPositionEnd, level.enemyShape);
-            enemy.setup(this.grid, this.enemyPrefab, level.enemyShape, start, end ?? undefined, this.soundManager);
-            enemy.onDestroyed = cell => this.fillLevelAfterEnemyDestroyed(cell);
+            enemy.setup(this.grid, this.enemyPrefab, level.enemyShape, start, end ?? undefined, this.soundManager, level.enemyColors, this.enemyDestroyParticlePrefab);
+            enemy.onDestroyed = cell => {
+                this.fillLevelAfterEnemyDestroyed(cell);
+                this.playConfetti();
+            };
             this.enemies.push(enemy);
         }
     }
@@ -216,7 +230,6 @@ export class GameManager extends Component {
         if (this.player) {
             (this.soundManager ?? SoundManager.current)?.playWin(this.player.worldPosition);
         }
-        this.playConfetti();
         this.uiManager.showWin();
         Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
         Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
@@ -225,26 +238,20 @@ export class GameManager extends Component {
     }
 
     private playConfetti(): void {
-        if (!this.enemyPrefab) {
-            console.error('[GameManager] Missing enemyPrefab');
+        if (!this.confettiEffectPrefab) {
+            console.error('[GameManager] Missing confettiEffectPrefab');
             return;
         }
-        if (!this.grid || !this.player) {
-            return;
-        }
-
-        const origin = this.player.worldPosition.clone();
-        origin.y += 1;
-        spawnPrefabBurst(this.enemyPrefab, this.grid.node, origin, {
-            count: 40,
-            scale: 0.25,
-            minRadius: 1,
-            maxRadius: 4,
-            minHeight: 1,
-            maxHeight: 3,
-            minDuration: 0.45,
-            maxDuration: 0.7,
-        });
+        const effect = instantiate(this.confettiEffectPrefab);
+        effect.setParent(this.node.parent ?? this.node);
+        effect.setSiblingIndex(9999);
+        effect.setPosition(0, 6, 0);
+        effect.setScale(new Vec3(2.2, 1, 2.2));
+        const particles = effect.getComponent(ParticleSystem);
+        particles?.stop();
+        particles?.clear();
+        particles?.play();
+        this.scheduleOnce(() => effect.destroy(), 5);
     }
 
     public failGame(): void {
@@ -363,7 +370,11 @@ export class GameManager extends Component {
         }
 
         if (this.baseOrthoHeight <= 0) {
+            const localPosition = new Vec3();
+            this.grid.node.inverseTransformPoint(localPosition, this.camera.node.worldPosition);
             this.baseOrthoHeight = this.camera.orthoHeight;
+            this.baseCameraLocalY = localPosition.y;
+            this.baseCameraPitch = Math.abs(this.camera.node.eulerAngles.x) * Math.PI / 180;
         }
 
         const isLandscape = this.isLandscape();
@@ -371,14 +382,13 @@ export class GameManager extends Component {
         const zoom = this.getCameraZoom(isLandscape, targetLevel);
         const offsetZ = this.getCameraOffsetZ(isLandscape, targetLevel);
         const center = this.getCameraCenter(targetLevel);
-        const gridPosition = this.grid.node.worldPosition;
-        const position = this.camera.node.worldPosition;
-        const target = new Vec3(gridPosition.x + center.x, gridPosition.y + center.y, gridPosition.z + center.z + offsetZ);
-        const forward = new Vec3(0, 0, -1);
-        Vec3.transformQuat(forward, forward, this.camera.node.worldRotation);
-        const distance = forward.y === 0 ? 0 : (target.y - position.y) / forward.y;
+        const localLookPosition = new Vec3(center.x, center.y, center.z + offsetZ);
+        const zDistance = Math.abs(this.baseCameraLocalY - localLookPosition.y) / Math.max(0.001, Math.tan(this.baseCameraPitch));
+        const localPosition = new Vec3(localLookPosition.x, this.baseCameraLocalY, localLookPosition.z + zDistance);
+        const worldPosition = new Vec3();
+        Vec3.transformMat4(worldPosition, localPosition, this.grid.node.getWorldMatrix(new Mat4()));
 
-        this.camera.node.setWorldPosition(new Vec3(target.x - forward.x * distance, position.y, target.z - forward.z * distance));
+        this.camera.node.setWorldPosition(worldPosition);
         this.camera.orthoHeight = this.baseOrthoHeight * zoom;
     }
 

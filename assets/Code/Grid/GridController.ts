@@ -546,7 +546,7 @@ export class GridController extends Component {
 
     private spawnPrefab(prefab: Prefab, x: number, z: number): Node {
         const tile = instantiate(prefab);
-        tile.setParent(this.node);
+        tile.setParent(this.node, false);
         tile.setPosition(this.gridToLocal(x, z));
         this.spawned.push(tile);
         return tile;

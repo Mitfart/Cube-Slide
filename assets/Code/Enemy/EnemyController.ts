@@ -1,5 +1,4 @@
-import { _decorator, Component, Node, Prefab, Vec2, Vec3, instantiate, tween } from 'cc';
-import { spawnPrefabBurst } from '../Effects/PrefabBurst';
+import { _decorator, Color, Component, GradientRange, Material, MeshRenderer, Node, ParticleSystem, Prefab, Vec2, Vec3, instantiate, tween } from 'cc';
 import { GridController } from '../Grid/GridController';
 import { SoundManager } from '../Services/SoundManager';
 const { ccclass, property } = _decorator;
@@ -17,6 +16,9 @@ export class EnemyController extends Component {
     @property(Prefab)
     public enemyCellPrefab: Prefab | null = null;
 
+    @property(Prefab)
+    public destroyParticlePrefab: Prefab | null = null;
+
     @property
     public cellsPerSecond = 3;
 
@@ -24,19 +26,21 @@ export class EnemyController extends Component {
     public soundManager: SoundManager | null = null;
 
     private readonly cells: EnemyCell[] = [];
+    private readonly materialsByColor = new Map<string, Material>();
     private start = new Vec2();
     private end = new Vec2();
     private goingToEnd = true;
     private destroyed = false;
     public onDestroyed: ((cell: Vec2) => void) | null = null;
 
-    public setup(grid: GridController, enemyCellPrefab: Prefab, shape: number[][], start: Vec2, end?: Vec2, soundManager: SoundManager | null = null): void {
+    public setup(grid: GridController, enemyCellPrefab: Prefab, shape: number[][], start: Vec2, end?: Vec2, soundManager: SoundManager | null = null, colors?: Record<number, string>, destroyParticlePrefab: Prefab | null = null): void {
         this.grid = grid;
         this.enemyCellPrefab = enemyCellPrefab;
+        this.destroyParticlePrefab = destroyParticlePrefab;
         this.soundManager = soundManager;
         this.start = start.clone();
         this.end = end?.clone() ?? start.clone();
-        this.buildShape(shape);
+        this.buildShape(shape, colors);
         this.node.setPosition(this.grid.gridToLocal(start.x, start.y));
         if (end && !this.sameCell(start, end)) {
             this.moveNext();
@@ -57,7 +61,7 @@ export class EnemyController extends Component {
         return [...touched.values()];
     }
 
-    private buildShape(shape: number[][]): void {
+    private buildShape(shape: number[][], colors?: Record<number, string>): void {
         if (!this.enemyCellPrefab) {
             console.error('[EnemyController] Missing enemyCellPrefab');
             return;
@@ -70,11 +74,34 @@ export class EnemyController extends Component {
                 if (shape[z][x] === 0) continue;
                 const cell = new Vec2(x - Math.floor(width / 2), z - Math.floor(height / 2));
                 const node = instantiate(this.enemyCellPrefab);
-                node.setParent(this.node);
+                node.setParent(this.node, false);
                 node.setPosition(new Vec3(cell.x, 0, cell.y));
+                this.applyColor(node, colors?.[shape[z][x]]);
                 this.cells.push({ offset: cell, node });
             }
         }
+    }
+
+    private applyColor(node: Node, hex?: string): void {
+        if (!hex) {
+            return;
+        }
+
+        const renderer = node.getComponentInChildren(MeshRenderer);
+        const base = renderer?.getSharedMaterial(0);
+        if (!renderer || !base) {
+            return;
+        }
+
+        let material = this.materialsByColor.get(hex);
+        if (!material) {
+            material = new Material();
+            material.copy(base);
+            material.setProperty('mainColor', new Color().fromHEX(hex));
+            this.materialsByColor.set(hex, material);
+        }
+
+        renderer.setSharedMaterial(material, 0);
     }
 
     private moveNext(): void {
@@ -161,22 +188,28 @@ export class EnemyController extends Component {
     }
 
     private spawnDestroyBurst(node: Node, delay: number): void {
-        if (!this.enemyCellPrefab) {
-            console.error('[EnemyController] Missing enemyCellPrefab');
+        if (!this.destroyParticlePrefab) {
+            console.error('[EnemyController] Missing destroyParticlePrefab');
             return;
         }
 
         const start = node.worldPosition.clone();
         start.y += 0.45;
-        spawnPrefabBurst(this.enemyCellPrefab, this.node.parent, start, {
-            count: 12,
-            scale: 0.5,
-            minRadius: 0.55,
-            maxRadius: 1.1,
-            minHeight: 0.35,
-            maxHeight: 0.8,
-            minDuration: 0.22,
-            maxDuration: 0.22,
+        const sourceColor = node.getComponentInChildren(MeshRenderer)?.getSharedMaterial(0)?.getProperty('mainColor') as Color | null;
+        this.scheduleOnce(() => {
+            const effect = instantiate(this.destroyParticlePrefab!);
+            effect.setParent(this.node.parent);
+            effect.setWorldPosition(start);
+            effect.setScale(1.3, 1.3, 1.3);
+            const particles = effect.getComponent(ParticleSystem);
+            if (particles && sourceColor) {
+                particles.startColor.mode = GradientRange.Mode.Color;
+                particles.startColor.color = sourceColor.clone();
+            }
+            particles?.stop();
+            particles?.clear();
+            particles?.play();
+            this.scheduleOnce(() => effect.destroy(), 2);
         }, delay);
     }
 

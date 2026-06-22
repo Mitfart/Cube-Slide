@@ -115,7 +115,9 @@ export class SoundManager extends Component {
         soundNode.setParent(this.node);
         soundNode.setWorldPosition(worldPosition);
         const source = soundNode.addComponent(AudioSource);
-        source.playOneShot(clip!, this.sfxVolume);
+        source.clip = clip;
+        source.volume = this.sfxVolume;
+        source.play();
         this.scheduleOnce(() => soundNode.destroy(), Math.max(0.1, clip!.getDuration()));
     }
 

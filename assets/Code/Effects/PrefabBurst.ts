@@ -9,6 +9,7 @@ export interface BurstOptions {
     maxHeight: number;
     minDuration: number;
     maxDuration: number;
+    onSpawn?: (node: Node) => void;
 }
 
 export function spawnPrefabBurst(prefab: Prefab, parent: Node | null, origin: Vec3, options: BurstOptions, delay = 0): void {
@@ -17,6 +18,7 @@ export function spawnPrefabBurst(prefab: Prefab, parent: Node | null, origin: Ve
         particle.setParent(parent);
         particle.setWorldPosition(origin);
         particle.setScale(options.scale, options.scale, options.scale);
+        options.onSpawn?.(particle);
 
         const angle = Math.random() * Math.PI * 2;
         const radius = options.minRadius + Math.random() * (options.maxRadius - options.minRadius);
