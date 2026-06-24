@@ -92,7 +92,7 @@ export class GridController extends Component {
         this.spawnMergedWalls(tiles);
         for (const [key, symbol] of tiles) {
             if (symbol !== '#') {
-                const [x, z] = this.parseTile(key);
+                const [x, z] = this.parseKey(key);
                 this.walkableTiles.add(key);
                 this.spawnTile(symbol, x, z);
             }
@@ -323,12 +323,12 @@ export class GridController extends Component {
     }
 
     public commitTrailToFill(playerCell: Vec2, fillPrefab: Prefab): void {
-        const trailKeys = Array.from(this.trailNodes.keys());
+        const trailKeys = [...this.trailNodes.keys()];
         if (trailKeys.length > 0) {
             this.playFillSounds(playerCell, trailKeys.length * 0.015 + 0.16);
         }
         for (let i = 0; i < trailKeys.length; i++) {
-            const [x, z] = this.parseTile(trailKeys[i]);
+            const [x, z] = this.parseKey(trailKeys[i]);
             this.setFilled(x, z, fillPrefab, true, i * 0.015);
         }
         this.trailNodes.clear();
@@ -373,7 +373,7 @@ export class GridController extends Component {
             this.playFillSounds(cell, this.getMaxFillDelay(keys, delays) + 0.16);
         }
         for (const key of keys) {
-            const [x, z] = this.parseTile(key);
+            const [x, z] = this.parseKey(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
         }
     }
@@ -454,7 +454,7 @@ export class GridController extends Component {
         for (const key of [...walls]) {
             if (!walls.has(key)) continue;
 
-            const [x, z] = this.parseTile(key);
+            const [x, z] = this.parseKey(key);
             if (walls.has(this.key(x, z - 1))) continue;
 
             const depth = this.countRun(walls, x, z, 0, 1);
@@ -467,7 +467,7 @@ export class GridController extends Component {
         for (const key of [...walls]) {
             if (!walls.has(key)) continue;
 
-            const [x, z] = this.parseTile(key);
+            const [x, z] = this.parseKey(key);
             if (walls.has(this.key(x - 1, z))) continue;
 
             const width = this.countRun(walls, x, z, 1, 0);
@@ -510,7 +510,7 @@ export class GridController extends Component {
         for (const [key, symbol] of tiles) {
             if (symbol === '#') continue;
 
-            const [tileX, tileZ] = this.parseTile(key);
+            const [tileX, tileZ] = this.parseKey(key);
             const minX = Math.max(shadowMinX, tileX - 0.5);
             const maxX = Math.min(shadowMaxX, tileX + 0.5);
             const minZ = Math.max(shadowMinZ, tileZ - 0.5);
@@ -614,14 +614,15 @@ export class GridController extends Component {
 
     private fillClosedAreas(playerCell: Vec2, fillPrefab: Prefab): void {
         const levelIndex = this.getLevelIndex(playerCell);
-        if (levelIndex < 0) return;
+        if (levelIndex < 0) {
+            return;
+        }
 
         const bounds = this.getKeyBounds(this.levelTiles[levelIndex]);
         const blocked = new Set([...this.levelBoundaryTiles[levelIndex], ...this.filledTiles, ...this.fillNodes.keys()]);
         const outside = new Set<string>();
         const queue = [this.key(bounds.minX - 1, bounds.minZ - 1)];
         outside.add(queue[0]);
-
         const add = (x: number, z: number): void => {
             if (x < bounds.minX - 1 || x > bounds.maxX + 1 || z < bounds.minZ - 1 || z > bounds.maxZ + 1) return;
             const key = this.key(x, z);
@@ -631,23 +632,20 @@ export class GridController extends Component {
         };
 
         for (let i = 0; i < queue.length; i++) {
-            const [x, z] = this.parseTile(queue[i]);
+            const [x, z] = this.parseKey(queue[i]);
             add(x + 1, z);
             add(x - 1, z);
             add(x, z + 1);
             add(x, z - 1);
         }
 
-        // Фильтруем строки
-        const inner = [...this.levelFillableTiles[levelIndex]]
-            .filter(key => typeof key === 'string' && !this.filledTiles.has(key) && !outside.has(key));
-
+        const inner = [...this.levelFillableTiles[levelIndex]].filter(key => !this.filledTiles.has(key) && !outside.has(key));
         const delays = this.getFillDelays(inner, playerCell);
         if (inner.length > 0) {
             this.playFillSounds(playerCell, this.getMaxFillDelay(inner, delays) + 0.16);
         }
         for (const key of inner) {
-            const [x, z] = this.parseTile(key);
+            const [x, z] = this.parseKey(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
         }
     }
@@ -658,7 +656,7 @@ export class GridController extends Component {
         let minZ = Number.MAX_SAFE_INTEGER;
         let maxZ = Number.MIN_SAFE_INTEGER;
         for (const key of keys) {
-            const [x, z] = this.parseTile(key);
+            const [x, z] = this.parseKey(key);
             minX = Math.min(minX, x);
             maxX = Math.max(maxX, x);
             minZ = Math.min(minZ, z);
@@ -668,16 +666,14 @@ export class GridController extends Component {
     }
 
     private getFillDelays(keys: string[], playerCell: Vec2): Map<string, number> {
-        // Фильтруем только строковые ключи
-        const stringKeys = keys.filter(k => typeof k === 'string');
-        const area = new Set<string>(stringKeys);
+        const area = new Set(keys);
         const startKey = this.key(playerCell.x, playerCell.y);
         area.add(startKey);
 
         const delays = new Map<string, number>([[startKey, 0]]);
         const queue = [startKey];
         for (let i = 0; i < queue.length; i++) {
-            const [x, z] = this.parseTile(queue[i]);
+            const [x, z] = this.parseKey(queue[i]);
             const nextDelay = (delays.get(queue[i]) ?? 0) + 1;
             for (const next of [this.key(x + 1, z), this.key(x - 1, z), this.key(x, z + 1), this.key(x, z - 1)]) {
                 if (!area.has(next) || delays.has(next)) continue;
@@ -686,9 +682,9 @@ export class GridController extends Component {
             }
         }
 
-        for (const key of stringKeys) {
+        for (const key of keys) {
             if (delays.has(key)) continue;
-            const [x, z] = this.parseTile(key);
+            const [x, z] = this.parseKey(key);
             delays.set(key, Math.abs(x - playerCell.x) + Math.abs(z - playerCell.y));
         }
         return delays;
@@ -779,11 +775,7 @@ export class GridController extends Component {
         return `${x},${z}`;
     }
 
-    private parseTile(key: string): [number, number] {
-        if (typeof key !== 'string') {
-            console.error('parseTile received non-string:', key, typeof key);
-            return [0, 0];
-        }
+    private parseKey(key: string): [number, number] {
         const parts = key.split(',');
         return [Number(parts[0]), Number(parts[1])];
     }
