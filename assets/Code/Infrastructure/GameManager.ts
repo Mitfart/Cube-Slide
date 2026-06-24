@@ -60,8 +60,18 @@ export class GameManager extends Component {
     private baseCameraPitch = 0;
     private currentLevelIndex = -1;
 
+    private hasEmitted25Percent: boolean = false;
+    private hasEmitted50Percent: boolean = false;
+    private hasEmitted75Percent: boolean = false;
+
+    protected onLoad(): void {
+        Analytics.emit(AnalyticEvents.LOADING);
+    }
+
     protected start(): void {
+        Analytics.emit(AnalyticEvents.LOADED);
         this.startGame();
+        Analytics.emit(AnalyticEvents.DISPLAYED);
     }
 
     public startGame(): void {
@@ -93,6 +103,8 @@ export class GameManager extends Component {
     public buildLevel(level: LevelConfig): void {
         this.currentLevelIndex = LEVELS.indexOf(level);
         this.buildLevels([level]);
+        
+        Analytics.emit(AnalyticEvents.CHALLENGE_STARTED);
     }
 
     public buildLevels(levels: LevelConfig[]): void {
@@ -249,7 +261,6 @@ export class GameManager extends Component {
         this.uiManager.showWin();
         this.scheduleOnce(() => this.returnToLevelChoice(), this.resultScreenDuration);
         Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
-        Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
         const playable = window as Window & { gameEnd?: () => void };
         playable.gameEnd?.();
     }
@@ -380,7 +391,30 @@ export class GameManager extends Component {
         }
 
         const levelIndex = this.getCameraTarget().levelIndex;
-        this.uiManager.setLevelProgress(levelIndex + 1, this.grid.getLevelProgress(levelIndex));
+        const levelProgress = this.grid.getLevelProgress(levelIndex);
+    
+        this.uiManager.setLevelProgress(levelIndex + 1, levelProgress);
+
+        this.scheduleOnce(() => {
+            if (levelProgress >= .25 && !this.hasEmitted25Percent) {
+                Analytics.emit(AnalyticEvents.CHALLENGE_PASS_25);
+                this.hasEmitted25Percent = true;
+            }
+        }, 0);
+        
+        this.scheduleOnce(() => {
+            if (levelProgress >= .5 && !this.hasEmitted50Percent) {
+                Analytics.emit(AnalyticEvents.CHALLENGE_PASS_50);
+                this.hasEmitted50Percent = true;
+            }
+        }, .05);
+
+        this.scheduleOnce(() => {
+            if (levelProgress >= .75 && !this.hasEmitted75Percent) {
+                Analytics.emit(AnalyticEvents.CHALLENGE_PASS_75);
+                this.hasEmitted75Percent = true;
+            }
+        }, .1);
     }
 
     private updateCamera(): void {

@@ -61,7 +61,7 @@ export class UI_ChooseLevelController extends Component {
         grid?.node.off(UITransform.EventType.SIZE_CHANGED, this.updateCardsLayout, this);
     }
 
-    public show(onComplete: () => void): void {
+    public show(onComplete: () => void = null): void {
         for (const card of this.getCards()) {
             card?.normalize();
         }
