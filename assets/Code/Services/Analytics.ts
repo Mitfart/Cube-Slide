@@ -38,8 +38,7 @@ export class Analytics {
             playable.ALPlayableAnalytics.trackEvent(eventName);
         } else if (typeof playable.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
             playable.dispatchEvent(new CustomEvent(eventName));
+            console.log(`[Analytics] ${eventName}`);
         }
-
-        console.log(`[Analytics] ${eventName}`);
     }
 }
