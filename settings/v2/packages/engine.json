@@ -104,7 +104,7 @@
             "_value": true
           },
           "profiler": {
-            "_value": true
+            "_value": false
           },
           "occlusion-query": {
             "_value": false
@@ -122,10 +122,10 @@
             "_value": true
           },
           "video": {
-            "_value": true
+            "_value": false
           },
           "webview": {
-            "_value": true
+            "_value": false
           },
           "tween": {
             "_value": true
@@ -203,11 +203,8 @@
           "mask",
           "particle",
           "primitive",
-          "profiler",
           "tween",
-          "ui",
-          "video",
-          "webview"
+          "ui"
         ],
         "noDeprecatedFeatures": {
           "value": false,
