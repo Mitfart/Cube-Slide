@@ -68,9 +68,6 @@ export class SoundManager extends Component {
         this.playAt('cellsFillStart', this.cellsFillStart, position);
     }
 
-    public stopCellsFillStart(): void {
-    }
-
     public playEnemyHit(position: Vec3): void {
         this.playAt('enemyHit', this.enemyHit, position);
     }

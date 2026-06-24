@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, instantiate, isValid, Label, Layers, Node, Prefab, ProgressBar, Sprite, SpriteFrame, Texture2D, tween, Tween, UIOpacity, UITransform, Vec3, view } from 'cc';
+import { _decorator, Camera, Component, instantiate, isValid, Label, Node, Prefab, ProgressBar, tween, Tween, UIOpacity, Vec3 } from 'cc';
 import { UI_Screen } from '../../Cocos_Engine/General/Code/ui/UI_Screen';
 const { ccclass, property } = _decorator;
 
@@ -9,12 +9,6 @@ export class UIManager extends Component {
 
     @property({ type: Prefab })
     public failScreenPrefab: Prefab | null = null;
-
-    @property({ type: Prefab })
-    public confettiEffectPrefab: Prefab | null = null;
-
-    @property(Texture2D)
-    public confettiTexture: Texture2D | null = null;
 
     @property(ProgressBar)
     public levelProgressBar: ProgressBar | null = null;
@@ -59,7 +53,6 @@ export class UIManager extends Component {
     public overlayCeiling: Node | null = null;
 
     private endScreen: UI_Screen | null = null;
-    private confettiEffect: Node | null = null;
     private hurtUi: Node | null = null;
     private hurtEffect: Node | null = null;
     private lifes: Node | null = null;
@@ -249,10 +242,6 @@ export class UIManager extends Component {
             this.endScreen.node.destroy();
             this.endScreen = null;
         }
-        if (this.confettiEffect) {
-            this.confettiEffect.destroy();
-            this.confettiEffect = null;
-        }
         if (this.hurtUi) {
             this.hurtUi.destroy();
             this.hurtUi = null;
@@ -375,66 +364,4 @@ export class UIManager extends Component {
         node.setSiblingIndex(this.overlayCeiling.getSiblingIndex());
     }
 
-    private playConfettiEffect(): void {
-        const root = this.uiRoot ?? this.node;
-        if (this.confettiEffect) {
-            this.confettiEffect.destroy();
-        }
-        this.confettiEffect = new Node('UIConfettiRoot');
-        this.confettiEffect.layer = Layers.Enum.UI_2D;
-        this.confettiEffect.setParent(root);
-        this.confettiEffect.setSiblingIndex(9999);
-        this.confettiEffect.setPosition(0, 0, 0);
-        this.playUiConfetti(this.confettiEffect);
-    }
-
-    private playUiConfetti(root: Node): void {
-        if (!this.confettiTexture) {
-            console.error('[UIManager] Missing confettiTexture');
-            return;
-        }
-
-        const size = view.getVisibleSize();
-        const frame = new SpriteFrame();
-        frame.texture = this.confettiTexture;
-        const colors = [Color.RED, Color.YELLOW, Color.GREEN, Color.CYAN, Color.MAGENTA, Color.WHITE];
-        for (let i = 0; i < 34; i++) {
-            const piece = new Node('UIConfetti');
-            piece.layer = Layers.Enum.UI_2D;
-            piece.setParent(root);
-            piece.addComponent(UITransform).setContentSize(9 + Math.random() * 7, 3 + Math.random() * 4);
-            piece.setPosition(0, size.height * 0.2, 0);
-            const scale = 0.35 + Math.random() * 0.45;
-            piece.setScale(scale, scale * (0.45 + Math.random() * 0.5), 1);
-            piece.setRotationFromEuler(0, 0, Math.random() * 360);
-            piece.setSiblingIndex(9999);
-
-            const sprite = piece.addComponent(Sprite);
-            sprite.spriteFrame = frame;
-            sprite.color = colors[i % colors.length];
-            piece.addComponent(UIOpacity).opacity = 180 + Math.random() * 75;
-
-            const angle = Math.PI * (0.08 + Math.random() * 0.84);
-            const power = size.height * (0.22 + Math.random() * 0.22);
-            const burst = new Vec3(Math.cos(angle) * power * 1.25, Math.sin(angle) * power, 0);
-            const fall = new Vec3((Math.random() - 0.5) * size.width * 0.22, -size.height * (0.32 + Math.random() * 0.22), 0);
-            const spin = (Math.random() > 0.5 ? 1 : -1) * (260 + Math.random() * 620);
-
-            tween(piece)
-                .delay(Math.random() * 0.08)
-                .by(0.32 + Math.random() * 0.12, { position: burst, angle: spin * 0.35 }, { easing: 'quadOut' })
-                .by(1.15 + Math.random() * 0.45, { position: fall, angle: spin }, { easing: 'quadIn' })
-                .call(() => {
-                    if (isValid(piece)) piece.destroy();
-                })
-                .start();
-        }
-    }
-
-    private setLayerRecursively(node: Node, layer: number): void {
-        node.layer = layer;
-        for (const child of node.children) {
-            this.setLayerRecursively(child, layer);
-        }
-    }
 }

@@ -1,5 +1,5 @@
 import { _decorator, Component, instantiate, Node, Prefab, Vec2, Vec3, tween } from 'cc';
-import { LevelConfig, LEVELS } from '../Gameplay/Levels';
+import { LevelConfig } from '../Gameplay/Levels';
 import { SoundManager } from '../Services/SoundManager';
 const { ccclass, property } = _decorator;
 
@@ -54,14 +54,6 @@ export class GridController extends Component {
     public onCoinCollected: ((coin: Node) => void) | null = null;
     private fillSoundActive = false;
     private fillSoundTicket = 0;
-
-    public buildDefaultLevel(): void {
-        this.buildLevels(LEVELS);
-    }
-
-    public buildLevel(level: LevelConfig): void {
-        this.buildLevels([level]);
-    }
 
     public buildLevels(levels: LevelConfig[]): void {
         if (!levels.every(level => this.validatePrefabs(level))) {
@@ -118,10 +110,6 @@ export class GridController extends Component {
 
     public getBuiltLevelSpawn(index: number): Vec3 | null {
         return this.levelSpawns[index] ?? null;
-    }
-
-    public getCameraTransitionZ(index: number): Vec2 | null {
-        return this.cameraTransitionZ[index] ?? null;
     }
 
     public getBuiltLevelCount(): number {
@@ -192,10 +180,6 @@ export class GridController extends Component {
         this.levelCenters.length = 0;
         this.levelSpawns.length = 0;
         this.cameraTransitionZ.length = 0;
-    }
-
-    public getCellSize(): number {
-        return this.cellSize;
     }
 
     public setSoundManager(soundManager: SoundManager | null): void {
@@ -619,7 +603,6 @@ export class GridController extends Component {
                 return;
             }
             this.fillSoundActive = false;
-            (this.soundManager ?? SoundManager.current)?.stopCellsFillStart();
         }, duration);
     }
 
