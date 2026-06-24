@@ -38,7 +38,7 @@ export class GameManager extends Component {
 
     @property(UIManager)
     public uiManager: UIManager | null = null;
-
+    
     @property(SoundManager)
     public soundManager: SoundManager | null = null;
 
@@ -66,6 +66,8 @@ export class GameManager extends Component {
 
     protected onLoad(): void {
         Analytics.emit(AnalyticEvents.LOADING);
+        
+        this.node._persistNode = true;
     }
 
     protected start(): void {
@@ -205,7 +207,7 @@ export class GameManager extends Component {
             const start = this.getEnemyCell(i, level.enemyPositionStart, level.enemyShape) ?? this.grid.localToGrid(this.grid.getBuiltLevelCenter(i) ?? new Vec3());
             const end = this.getEnemyCell(i, level.enemyPositionEnd, level.enemyShape);
             enemy.setup(this.grid, this.enemyPrefab, level.enemyShape, start, end ?? undefined, this.soundManager, level.enemyColors, this.enemyDestroyParticlePrefab);
-            enemy.onDestroyed = cell => {
+            enemy.onDestroyed = (cell: Vec2) => {
                 this.fillLevelAfterEnemyDestroyed(cell);
                 this.playConfetti();
             };
@@ -255,14 +257,17 @@ export class GameManager extends Component {
 
         this.ended = true;
         if (this.player) {
-            (this.soundManager ?? SoundManager.current)?.playWin(this.player.worldPosition);
+            this.soundManager.playWin(this.player.worldPosition);
         }
         this.chooseLevelUI?.setLevelResult(this.currentLevelIndex, true);
         this.uiManager.showWin();
-        this.scheduleOnce(() => this.returnToLevelChoice(), this.resultScreenDuration);
+
+        this.scheduleOnce(() => {
+            this.uiManager?.hideEndScreen();
+            this.restartGame();
+        }, this.resultScreenDuration);
+    
         Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
-        const playable = window as Window & { gameEnd?: () => void };
-        playable.gameEnd?.();
     }
 
     private playConfetti(): void {
@@ -294,11 +299,17 @@ export class GameManager extends Component {
         this.ended = true;
         this.chooseLevelUI?.setLevelResult(this.currentLevelIndex, false);
         this.uiManager.showFail();
-        this.scheduleOnce(() => this.returnToLevelChoice(), this.resultScreenDuration);
+        
+        this.scheduleOnce(() => {
+            this.uiManager?.hideEndScreen();
+            this.restartGame();
+        }, this.resultScreenDuration);
+
         Analytics.emit(AnalyticEvents.CHALLENGE_FAILED);
     }
 
-    private returnToLevelChoice(): void {
+    private 
+    (): void {
         this.uiManager?.hideEndScreen();
         
         this.clearLevel();
@@ -348,7 +359,7 @@ export class GameManager extends Component {
             return;
         }
 
-        (this.soundManager ?? SoundManager.current)?.playEnemyHit(playerController.node.worldPosition);
+        this.soundManager.playEnemyHit(playerController.node.worldPosition);
         const failed = playerController.takeDamage();
         this.uiManager?.popLife();
         if (failed) {

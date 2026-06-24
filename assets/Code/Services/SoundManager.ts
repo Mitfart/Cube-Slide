@@ -3,8 +3,6 @@ const { ccclass, property } = _decorator;
 
 @ccclass('SoundManager')
 export class SoundManager extends Component {
-    public static current: SoundManager | null = null;
-
     @property(AudioClip)
     public music: AudioClip | null = null;
 
@@ -37,19 +35,15 @@ export class SoundManager extends Component {
 
     private unlocked = false;
     private musicSource: AudioSource | null = null;
+    private soundSources = new Map<string, AudioSource>();
     private readonly missingClips = new Set<string>();
 
     protected onEnable(): void {
-        SoundManager.current = this;
         input.on(Input.EventType.TOUCH_START, this.unlock, this);
     }
 
     protected onDisable(): void {
-        if (SoundManager.current === this) {
-            SoundManager.current = null;
-        }
         input.off(Input.EventType.TOUCH_START, this.unlock, this);
-        this.musicSource?.stop();
     }
 
     public playUiClick(position: Vec3): void {
@@ -86,16 +80,20 @@ export class SoundManager extends Component {
         }
 
         this.unlocked = true;
-        this.musicSource = this.node.addComponent(AudioSource);
-        this.playUiClick(this.node.worldPosition);
         this.playMusic();
     }
 
     private playMusic(): void {
-        if (!this.music || !this.musicSource) {
+        if (!this.music) {
             console.error('[SoundManager] Missing music');
             return;
         }
+        
+        this.musicSource ??= ((): AudioSource => {
+            const soundNode = new Node(`Sound_Music`);
+            soundNode.setParent(this.node);
+            return soundNode.addComponent(AudioSource);
+        })();
 
         this.musicSource.clip = this.music;
         this.musicSource.loop = true;
@@ -108,14 +106,19 @@ export class SoundManager extends Component {
             return;
         }
 
-        const soundNode = new Node(`Sound_${name}`);
-        soundNode.setParent(this.node);
-        soundNode.setWorldPosition(worldPosition);
-        const source = soundNode.addComponent(AudioSource);
+        this.soundSources.set(name, this.soundSources.get(name) ?? (() => {
+            const soundNode = new Node(`Sound_${name}`);
+            
+            soundNode.setParent(this.node);
+            soundNode.setWorldPosition(worldPosition);
+
+            return soundNode.addComponent(AudioSource);
+        })());
+        const source = this.soundSources.get(name)
+
         source.clip = clip;
         source.volume = this.sfxVolume;
         source.play();
-        this.scheduleOnce(() => soundNode.destroy(), Math.max(0.1, clip!.getDuration()));
     }
 
     private canPlay(name: string, clip: AudioClip | null): boolean {

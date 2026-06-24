@@ -27,8 +27,8 @@ export class EnemyController extends Component {
 
     private readonly cells: EnemyCell[] = [];
     private readonly materialsByColor = new Map<string, Material>();
-    private start = new Vec2();
-    private end = new Vec2();
+    private startPos = new Vec2();
+    private endPos = new Vec2();
     private goingToEnd = true;
     private destroyed = false;
     public onDestroyed: ((cell: Vec2) => void) | null = null;
@@ -38,8 +38,8 @@ export class EnemyController extends Component {
         this.enemyCellPrefab = enemyCellPrefab;
         this.destroyParticlePrefab = destroyParticlePrefab;
         this.soundManager = soundManager;
-        this.start = start.clone();
-        this.end = end?.clone() ?? start.clone();
+        this.startPos = start.clone();
+        this.endPos = end?.clone() ?? start.clone();
         this.buildShape(shape, colors);
         this.node.setPosition(this.grid.gridToLocal(start.x, start.y));
         if (end && !this.sameCell(start, end)) {
@@ -111,11 +111,11 @@ export class EnemyController extends Component {
         }
 
         const current = this.grid.localToGrid(this.node.position);
-        if (this.sameCell(current, this.goingToEnd ? this.end : this.start)) {
+        if (this.sameCell(current, this.goingToEnd ? this.endPos : this.startPos)) {
             this.goingToEnd = !this.goingToEnd;
         }
 
-        const goal = this.goingToEnd ? this.end : this.start;
+        const goal = this.goingToEnd ? this.endPos : this.startPos;
         const target = this.grid.gridToLocal(goal.x, goal.y);
         const distance = Vec3.distance(this.node.position, target);
         tween(this.node)
@@ -147,7 +147,7 @@ export class EnemyController extends Component {
             const delay = Math.random() * 0.12;
             if (!this.hasNearbyBurst(hitCell, burstCells)) {
                 const soundPosition = cell.node.worldPosition.clone();
-                this.scheduleOnce(() => (this.soundManager ?? SoundManager.current)?.playEnemyDestroy(soundPosition), delay);
+                this.scheduleOnce(() => this.soundManager.playEnemyDestroy(soundPosition), delay);
                 this.spawnDestroyBurst(cell.node, delay);
                 burstCells.add(`${hitCell.x},${hitCell.y}`);
             }

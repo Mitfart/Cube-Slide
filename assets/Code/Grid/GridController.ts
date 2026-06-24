@@ -162,7 +162,9 @@ export class GridController extends Component {
 
     public clearLevel(): void {
         for (const tile of this.spawned) {
-            tile.destroy();
+            if (tile.isValid) {
+                tile.destroy();
+            }
         }
         this.spawned.length = 0;
         this.walkableTiles.clear();
@@ -265,7 +267,7 @@ export class GridController extends Component {
     public collectCoinAt(x: number, z: number): void {
         const coin = this.takeCoin(this.key(x, z));
         if (coin) {
-            (this.soundManager ?? SoundManager.current)?.playCoin(coin.worldPosition);
+            this.soundManager.playCoin(coin.worldPosition);
             this.onCoinCollected?.(coin);
         }
     }
@@ -315,7 +317,7 @@ export class GridController extends Component {
         }
 
         const trail = this.spawnPrefab(prefab, x, z);
-        (this.soundManager ?? SoundManager.current)?.playCellTrail(trail.worldPosition);
+        this.soundManager.playCellTrail(trail.worldPosition);
         this.playTrailSpawn(trail);
         this.trailNodes.set(key, trail);
     }
@@ -594,7 +596,7 @@ export class GridController extends Component {
         Vec3.add(position, position, this.node.worldPosition);
         if (!this.fillSoundActive) {
             this.fillSoundActive = true;
-            (this.soundManager ?? SoundManager.current)?.playCellsFillStart(position);
+            this.soundManager.playCellsFillStart(position);
         }
 
         const ticket = ++this.fillSoundTicket;
