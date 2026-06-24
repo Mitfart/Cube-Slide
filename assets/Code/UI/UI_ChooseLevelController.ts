@@ -1,15 +1,16 @@
-import { _decorator, Component, EventTouch, Layers, Layout, Node, Size, Sprite, SpriteFrame, tween, UIOpacity, UITransform, Vec3, view } from 'cc';
+import { _decorator, Component, Layers, Layout, Node, Size, SpriteFrame, UITransform, view } from 'cc';
 import { UI_Screen } from '../../Cocos_Engine/General/Code/ui/UI_Screen';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
+import { UI_ChooseLevelCard } from './UI_ChooseLevelCard';
 const { ccclass, property } = _decorator;
 
 @ccclass('UI_ChooseLevelController')
 export class UI_ChooseLevelController extends Component {
-    @property(Node)
-    public gameManager: Node | null = null;
+    @property(Layout)
+    public cardsLayout: Layout | null = null;
 
-    @property([Node])
-    public cards: Node[] = [];
+    @property([UI_ChooseLevelCard])
+    public levelCards: UI_ChooseLevelCard[] = [];
 
     @property(SpriteFrame)
     public endTitleWin: SpriteFrame | null = null;
@@ -17,75 +18,81 @@ export class UI_ChooseLevelController extends Component {
     @property(SpriteFrame)
     public endTitleFail: SpriteFrame | null = null;
 
+    @property(UI_Screen)
+    public screen: UI_Screen | null = null;
+
     private readonly levelResults: (boolean | null)[] = [];
+    private gameManager: { buildLevel(level: LevelConfig): void } | null = null;
 
     protected onLoad(): void {
         this.setLayerRecursively(this.node, Layers.Enum.UI_2D);
     }
 
+    private setLayerRecursively(node: Node, layer: number): void {
+        node.layer = layer;
+        for (const child of node.children) {
+            this.setLayerRecursively(child, layer);
+        }
+    }
+
+    public setGameManager(gameManager: { buildLevel(level: LevelConfig): void }): void {
+        this.gameManager = gameManager;
+    }
+
     protected onEnable(): void {
-        for (let i = 0; i < this.cards.length; i++) {
-            const card = this.cards[i];
-            if (!card) continue;
-            card.on(Node.EventType.TOUCH_END, this.onCardTouch, this);
+        const cards = this.getCards();
+        for (let i = 0; i < cards.length; i++) {
+            cards[i]?.initialize(i, index => this.chooseLevel(index));
         }
 
-        const grid = this.getCardsLayout();
+        const grid = this.cardsLayout;
         view.on('canvas-resize', this.updateCardsLayout, this);
         grid?.node.on(UITransform.EventType.SIZE_CHANGED, this.updateCardsLayout, this);
         this.updateCardsLayout();
     }
 
     protected onDisable(): void {
-        for (const card of this.cards) {
-            if (!card) continue;
-            card.off(Node.EventType.TOUCH_END, this.onCardTouch, this);
+        for (const card of this.getCards()) {
+            card?.deinitialize();
         }
 
-        const grid = this.getCardsLayout();
+        const grid = this.cardsLayout;
         view.off('canvas-resize', this.updateCardsLayout, this);
         grid?.node.off(UITransform.EventType.SIZE_CHANGED, this.updateCardsLayout, this);
     }
 
-    public show(): void {
-        const screen = this.getScreen();
-        if (!screen) return;
-        this.hideResultCards();
-        screen.show(() => this.updateResultCards(true));
+    public show(onComplete: () => void): void {
+        for (const card of this.getCards()) {
+            card?.normalize();
+        }
+        this.screen?.show(() => { 
+            this.updateResultCards(true); 
+            onComplete?.(); 
+        });
     }
 
     public hide(onComplete: () => void = null): void {
-        const screen = this.getScreen();
-        if (!screen) return;
-        screen.hide(false, onComplete);
+        this.screen?.hide(false, onComplete);
     }
 
     public setLevelResult(index: number, won: boolean): void {
         this.levelResults[index] = won;
     }
 
-    private onCardTouch(event: EventTouch): void {
-        const index = this.cards.indexOf(event.target as Node);
-        if (index < 0) {
-            return;
-        }
-        this.chooseLevel(index);
-    }
-
     private updateCardsLayout(): void {
-        const gridLayout = this.getCardsLayout();
+        const gridLayout = this.cardsLayout;
         if (!gridLayout) {
-            console.error('[UI_ChooseLevelController] Missing cards Layout');
+            console.error('[UI_ChooseLevelController] Missing cardsLayout');
             return;
         }
 
         const transform = gridLayout.node.getComponent(UITransform);
         if (!transform) {
-            console.error('[UI_ChooseLevelController] Missing UITransform on cards Layout');
+            console.error('[UI_ChooseLevelController] Missing UITransform on cardsLayout');
             return;
         }
 
-        const count = this.cards.filter(Boolean).length;
+        const count = this.getCards().filter(Boolean).length;
         if (count === 0) return;
 
         const containerWidth = transform.contentSize.width;
@@ -125,68 +132,32 @@ export class UI_ChooseLevelController extends Component {
         gridLayout.updateLayout(true);
     }
 
-    private getCardsLayout(): Layout | null {
-        return this.cards[0]?.parent?.getComponent(Layout) ?? null;
-    }
-
-    private hideResultCards(): void {
-        for (const card of this.cards) {
-            const cover = card?.getChildByName('Cover');
-            const banner = card?.getChildByName('Banner');
-            if (cover) cover.active = false;
-            if (banner) banner.active = false;
-        }
-    }
-
     private updateResultCards(animated: boolean): void {
-        for (let i = 0; i < this.cards.length; i++) {
-            this.updateResultCard(this.cards[i], this.levelResults[i], animated);
+        const cards = this.getCards();
+        for (let i = 0; i < cards.length; i++) {
+            this.updateResultCard(cards[i], this.levelResults[i], animated);
         }
     }
 
-    private updateResultCard(card: Node | null, won: boolean | null, animated: boolean): void {
+    private updateResultCard(card: UI_ChooseLevelCard | null, won: boolean | null, animated: boolean): void {
         if (!card) return;
 
-        const cover = card.getChildByName('Cover');
-        const banner = card.getChildByName('Banner');
-        if (!cover) {
-            console.error('[UI_ChooseLevelController] Missing Cover');
-            return;
-        }
-        if (!banner) {
-            console.error('[UI_ChooseLevelController] Missing Banner');
-            return;
-        }
-
         if (won === null || won === undefined) {
-            cover.active = false;
-            banner.active = false;
+            card.hideResult();
             return;
         }
 
-        const coverOpacity = cover.getComponent(UIOpacity) ?? cover.addComponent(UIOpacity);
-        const bannerSprite = banner.getComponent(Sprite);
         const spriteFrame = won ? this.endTitleWin : this.endTitleFail;
-        if (!bannerSprite) {
-            console.error('[UI_ChooseLevelController] Missing Sprite on Banner');
-            return;
-        }
         if (!spriteFrame) {
             console.error('[UI_ChooseLevelController] Missing end title SpriteFrame');
             return;
         }
 
-        cover.active = true;
-        coverOpacity.opacity = 125;
-        banner.active = true;
-        bannerSprite.spriteFrame = spriteFrame;
+        card.showResult(spriteFrame, animated);
+    }
 
-        if (!animated) return;
-        const targetScale = banner.scale.clone();
-        banner.setScale(Vec3.ZERO);
-        tween(banner)
-            .to(0.25, { scale: targetScale }, { easing: 'backOut' })
-            .start();
+    private getCards(): (UI_ChooseLevelCard | null)[] {
+        return this.levelCards;
     }
 
     private chooseLevel(index: number): void {
@@ -203,27 +174,7 @@ export class UI_ChooseLevelController extends Component {
             return;
         }
 
-        const gameManager = this.gameManager.getComponent('GameManager') as { buildLevel(level: LevelConfig): void } | null;
-        if (!gameManager) {
-            console.error('[UI_ChooseLevelController] Missing GameManager component');
-            return;
-        }
-        gameManager.buildLevel(level);
+        this.gameManager.buildLevel(level);
         this.hide();
-    }
-
-    private getScreen(): UI_Screen | null {
-        const screen = this.getComponent(UI_Screen);
-        if (!screen) {
-            console.error('[UI_ChooseLevelController] Missing UI_Screen');
-        }
-        return screen;
-    }
-
-    private setLayerRecursively(node: Node, layer: number): void {
-        node.layer = layer;
-        for (const child of node.children) {
-            this.setLayerRecursively(child, layer);
-        }
     }
 }

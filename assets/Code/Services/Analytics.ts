@@ -40,6 +40,6 @@ export class Analytics {
             playable.dispatchEvent(new CustomEvent(eventName));
         }
 
-        console.log(`[Analytics] ${eventName}`);
+        // console.log(`[Analytics] ${eventName}`);
     }
 }

@@ -1,4 +1,4 @@
-import { _decorator, Camera, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, Vec2, Vec3, view } from 'cc';
+import { _decorator, Button, Camera, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, Vec2, Vec3, view } from 'cc';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
 import { GridController } from '../Grid/GridController';
 import { EnemyController } from '../Enemy/EnemyController';
@@ -7,6 +7,7 @@ import { Analytics, AnalyticEvents } from '../Services/Analytics';
 import { SoundManager } from '../Services/SoundManager';
 import { UIManager } from '../UI/UIManager';
 import { UI_ChooseLevelController } from '../UI/UI_ChooseLevelController';
+import { UI_GameDownloadBtn } from '../../Cocos_Engine/General/Code/export/UI_GameDownloadBtn';
 const { ccclass, property } = _decorator;
 
 interface CameraTarget {
@@ -53,7 +54,6 @@ export class GameManager extends Component {
     private player: Node | null = null;
     private readonly enemies: EnemyController[] = [];
     private ended = false;
-    private hurtLocked = false;
     private currentLevels: LevelConfig[] = [];
     private baseOrthoHeight = 0;
     private baseCameraLocalY = 0;
@@ -67,6 +67,7 @@ export class GameManager extends Component {
     public startGame(): void {
         if (this.chooseLevelUI) {
             this.clearLevel();
+            this.chooseLevelUI.setGameManager(this);
             this.chooseLevelUI.show();
             return;
         }
@@ -96,7 +97,6 @@ export class GameManager extends Component {
 
     public buildLevels(levels: LevelConfig[]): void {
         this.ended = false;
-        this.hurtLocked = false;
         if (!this.uiManager) {
             console.error('[GameManager] Missing uiManager');
             return;
@@ -261,7 +261,6 @@ export class GameManager extends Component {
         }
         const effect = instantiate(this.confettiEffectPrefab);
         effect.setParent(this.node.parent ?? this.node);
-        effect.setSiblingIndex(9999);
         effect.setPosition(0, 6, 0);
         effect.setScale(new Vec3(2.2, 1, 2.2));
         const particles = effect.getComponent(ParticleSystem);
@@ -286,12 +285,18 @@ export class GameManager extends Component {
         this.uiManager.showFail();
         this.scheduleOnce(() => this.returnToLevelChoice(), this.resultScreenDuration);
         Analytics.emit(AnalyticEvents.CHALLENGE_FAILED);
-        Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
     }
 
     private returnToLevelChoice(): void {
-        this.startGame();
         this.uiManager?.hideEndScreen();
+        
+        this.clearLevel();
+        this.chooseLevelUI.setGameManager(this);
+        this.chooseLevelUI.show(() => { 
+            this.chooseLevelUI.addComponent(Button);
+            this.chooseLevelUI.addComponent(UI_GameDownloadBtn);
+            Analytics.emit(AnalyticEvents.ENDCARD_SHOWN); 
+        });
     }
 
     private checkCoinCollect(): void {
@@ -327,9 +332,6 @@ export class GameManager extends Component {
     }
 
     private handlePlayerHit(playerController: PlayerController | null | undefined): void {
-        if (this.hurtLocked) {
-            return;
-        }
         if (!playerController) {
             console.error('[GameManager] Missing PlayerController');
             return;
@@ -360,13 +362,11 @@ export class GameManager extends Component {
             return;
         }
 
-        this.hurtLocked = true;
         playerController.hideForDamage();
         this.grid.clearPaintForLevel(hitCell, this.grid.localToGrid(spawn));
         this.uiManager.showHurt();
         this.scheduleOnce(() => playerController.respawnAfterDamageAt(spawn), 0.45);
         this.scheduleOnce(() => this.uiManager?.hideHurt(), 1.7);
-        this.scheduleOnce(() => this.hurtLocked = false, 1);
     }
 
     private updateLevelProgress(): void {
