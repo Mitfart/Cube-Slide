@@ -323,12 +323,16 @@ export class GridController extends Component {
     }
 
     public commitTrailToFill(playerCell: Vec2, fillPrefab: Prefab): void {
-        const trailKeys = [...this.trailNodes.keys()];
+        // Array.from гарантирует обычный массив строк
+        const trailKeys = Array.from(this.trailNodes.keys());
         if (trailKeys.length > 0) {
             this.playFillSounds(playerCell, trailKeys.length * 0.015 + 0.16);
         }
         for (let i = 0; i < trailKeys.length; i++) {
-            const [x, z] = this.parseKey(trailKeys[i]);
+            const key = trailKeys[i];
+            // защита от нестроки
+            if (typeof key !== 'string') continue;
+            const [x, z] = this.parseKey(key);
             this.setFilled(x, z, fillPrefab, true, i * 0.015);
         }
         this.trailNodes.clear();
@@ -614,15 +618,22 @@ export class GridController extends Component {
 
     private fillClosedAreas(playerCell: Vec2, fillPrefab: Prefab): void {
         const levelIndex = this.getLevelIndex(playerCell);
-        if (levelIndex < 0) {
-            return;
-        }
+        if (levelIndex < 0) return;
 
+        // Границы по ВСЕМ клеткам уровня (включая стены) – как в оригинале
         const bounds = this.getKeyBounds(this.levelTiles[levelIndex]);
-        const blocked = new Set([...this.levelBoundaryTiles[levelIndex], ...this.filledTiles, ...this.fillNodes.keys()]);
+
+        // blocked: внутренние стены (без верхней границы) + уже заполненные + новый trail
+        const blocked = new Set<string>([
+            ...this.levelBoundaryTiles[levelIndex],
+            ...this.filledTiles,
+            ...this.fillNodes.keys(),
+        ]);
+
         const outside = new Set<string>();
         const queue = [this.key(bounds.minX - 1, bounds.minZ - 1)];
         outside.add(queue[0]);
+
         const add = (x: number, z: number): void => {
             if (x < bounds.minX - 1 || x > bounds.maxX + 1 || z < bounds.minZ - 1 || z > bounds.maxZ + 1) return;
             const key = this.key(x, z);
@@ -639,11 +650,16 @@ export class GridController extends Component {
             add(x, z - 1);
         }
 
-        const inner = [...this.levelFillableTiles[levelIndex]].filter(key => !this.filledTiles.has(key) && !outside.has(key));
+        // inner = все fillable клетки, которые не заполнены и не досягаемы снаружи
+        const inner = Array.from(this.levelFillableTiles[levelIndex]).filter(
+            (key: string) => !this.filledTiles.has(key) && !outside.has(key)
+        );
+
+        if (inner.length === 0) return;
+
         const delays = this.getFillDelays(inner, playerCell);
-        if (inner.length > 0) {
-            this.playFillSounds(playerCell, this.getMaxFillDelay(inner, delays) + 0.16);
-        }
+        this.playFillSounds(playerCell, this.getMaxFillDelay(inner, delays) + 0.16);
+
         for (const key of inner) {
             const [x, z] = this.parseKey(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
@@ -666,7 +682,9 @@ export class GridController extends Component {
     }
 
     private getFillDelays(keys: string[], playerCell: Vec2): Map<string, number> {
-        const area = new Set(keys);
+        // Надёжное приведение к массиву строк
+        const stringKeys = Array.from(keys).filter((k: any) => typeof k === 'string') as string[];
+        const area = new Set(stringKeys);
         const startKey = this.key(playerCell.x, playerCell.y);
         area.add(startKey);
 
@@ -682,7 +700,7 @@ export class GridController extends Component {
             }
         }
 
-        for (const key of keys) {
+        for (const key of stringKeys) {
             if (delays.has(key)) continue;
             const [x, z] = this.parseKey(key);
             delays.set(key, Math.abs(x - playerCell.x) + Math.abs(z - playerCell.y));
@@ -775,7 +793,11 @@ export class GridController extends Component {
         return `${x},${z}`;
     }
 
-    private parseKey(key: string): [number, number] {
+    private parseKey(key: any): [number, number] {
+        if (typeof key !== 'string') {
+            console.warn('parseKey received non-string, converting:', key);
+            key = String(key);
+        }
         const parts = key.split(',');
         return [Number(parts[0]), Number(parts[1])];
     }

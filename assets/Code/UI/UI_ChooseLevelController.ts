@@ -79,6 +79,12 @@ export class UI_ChooseLevelController extends Component {
         this.levelResults[index] = won;
     }
 
+    public blockInput() {
+        this.getCards().forEach(card => {
+            card.block();
+        });
+    }
+
     private updateCardsLayout(): void {
         const gridLayout = this.cardsLayout;
         if (!gridLayout) {

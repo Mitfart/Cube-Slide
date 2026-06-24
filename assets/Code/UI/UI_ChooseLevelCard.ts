@@ -56,6 +56,11 @@ export class UI_ChooseLevelCard extends Component {
         if (animated) this.playBannerScaleIn();
     }
 
+    public block() {
+        this.deinitialize();
+    }
+
+
     private handleTouch(): void {
         this.onSelected?.(this.index);
     }

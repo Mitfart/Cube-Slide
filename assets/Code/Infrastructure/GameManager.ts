@@ -245,31 +245,6 @@ export class GameManager extends Component {
         playerController.waitForLevelComplete(playerController.getGridCell() ?? cell);
     }
 
-    private endGame(): void {
-        if (this.ended) {
-            return;
-        }
-
-        if (!this.uiManager) {
-            console.error('[GameManager] Missing uiManager');
-            return;
-        }
-
-        this.ended = true;
-        if (this.player) {
-            this.soundManager.playWin(this.player.worldPosition);
-        }
-        this.chooseLevelUI?.setLevelResult(this.currentLevelIndex, true);
-        this.uiManager.showWin();
-
-        this.scheduleOnce(() => {
-            this.uiManager?.hideEndScreen();
-            this.restartGame();
-        }, this.resultScreenDuration);
-    
-        Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
-    }
-
     private playConfetti(): void {
         if (!this.confettiEffectPrefab) {
             console.error('[GameManager] Missing confettiEffectPrefab');
@@ -308,17 +283,37 @@ export class GameManager extends Component {
         Analytics.emit(AnalyticEvents.CHALLENGE_FAILED);
     }
 
-    private 
-    (): void {
-        this.uiManager?.hideEndScreen();
-        
-        this.clearLevel();
-        this.chooseLevelUI.setGameManager(this);
-        this.chooseLevelUI.show(() => { 
-            this.chooseLevelUI.addComponent(Button);
-            this.chooseLevelUI.addComponent(UI_GameDownloadBtn);
-            Analytics.emit(AnalyticEvents.ENDCARD_SHOWN); 
-        });
+    private endGame(): void {
+        if (this.ended) {
+            return;
+        }
+
+        if (!this.uiManager) {
+            console.error('[GameManager] Missing uiManager');
+            return;
+        }
+
+        this.ended = true;
+        if (this.player) {
+            this.soundManager.playWin(this.player.worldPosition);
+        }
+        this.chooseLevelUI?.setLevelResult(this.currentLevelIndex, true);
+        this.uiManager.showWin();
+
+        this.scheduleOnce(() => {
+            this.uiManager?.hideEndScreen();
+            
+            this.clearLevel();
+            this.chooseLevelUI.setGameManager(this);
+            this.chooseLevelUI.show(() => { 
+                this.chooseLevelUI.addComponent(Button);
+                this.chooseLevelUI.addComponent(UI_GameDownloadBtn);
+                this.chooseLevelUI.blockInput();
+                Analytics.emit(AnalyticEvents.ENDCARD_SHOWN); 
+            });
+        }, this.resultScreenDuration);
+    
+        Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
     }
 
     private checkCoinCollect(): void {
