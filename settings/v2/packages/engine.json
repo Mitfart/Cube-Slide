@@ -18,7 +18,7 @@
             "_value": false
           },
           "animation": {
-            "_value": true
+            "_value": false
           },
           "skeletal-animation": {
             "_value": false
@@ -194,7 +194,6 @@
         "includeModules": [
           "2d",
           "3d",
-          "animation",
           "audio",
           "base",
           "custom-pipeline",
