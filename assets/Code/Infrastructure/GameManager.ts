@@ -6,6 +6,7 @@ import { PlayerController } from '../Player/PlayerController';
 import { Analytics, AnalyticEvents } from '../Services/Analytics';
 import { SoundManager } from '../Services/SoundManager';
 import { UIManager } from '../UI/UIManager';
+import { UI_ChooseLevelController } from '../UI/UI_ChooseLevelController';
 const { ccclass, property } = _decorator;
 
 interface CameraTarget {
@@ -40,6 +41,12 @@ export class GameManager extends Component {
     @property(SoundManager)
     public soundManager: SoundManager | null = null;
 
+    @property(UI_ChooseLevelController)
+    public chooseLevelUI: UI_ChooseLevelController | null = null;
+
+    @property
+    public resultScreenDuration = 1.5;
+
     @property
     public minimumDragDistance = 40;
 
@@ -57,6 +64,12 @@ export class GameManager extends Component {
     }
 
     public startGame(): void {
+        if (this.chooseLevelUI) {
+            this.clearLevel();
+            this.chooseLevelUI.show();
+            return;
+        }
+
         this.buildLevel(LEVELS[0]);
     }
 
@@ -231,6 +244,7 @@ export class GameManager extends Component {
             (this.soundManager ?? SoundManager.current)?.playWin(this.player.worldPosition);
         }
         this.uiManager.showWin();
+        this.scheduleOnce(() => this.startGame(), this.resultScreenDuration);
         Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
         Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
         const playable = window as Window & { gameEnd?: () => void };
@@ -266,6 +280,7 @@ export class GameManager extends Component {
 
         this.ended = true;
         this.uiManager.showFail();
+        this.scheduleOnce(() => this.startGame(), this.resultScreenDuration);
         Analytics.emit(AnalyticEvents.CHALLENGE_FAILED);
         Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
     }
