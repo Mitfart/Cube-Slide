@@ -21,7 +21,10 @@
       "CanvasPool"
     ],
     "dontMangleList": [
-      "Component"
+      "Component", 
+      "parseTile",
+      "commitTrailToFill",
+      "commitTrailAtCurrentCell"
     ]
   },
   "HTML5": {
