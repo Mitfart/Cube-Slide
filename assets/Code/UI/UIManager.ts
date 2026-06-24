@@ -1,4 +1,4 @@
-import { _decorator, Camera, Color, Component, instantiate, Label, Layers, Node, Prefab, ProgressBar, Sprite, SpriteFrame, Texture2D, tween, Tween, UIOpacity, UITransform, Vec3, view } from 'cc';
+import { _decorator, Camera, Color, Component, instantiate, isValid, Label, Layers, Node, Prefab, ProgressBar, Sprite, SpriteFrame, Texture2D, tween, Tween, UIOpacity, UITransform, Vec3, view } from 'cc';
 import { UI_Screen } from '../../Cocos_Engine/General/Code/ui/UI_Screen';
 const { ccclass, property } = _decorator;
 
@@ -55,6 +55,9 @@ export class UIManager extends Component {
     @property(Node)
     public uiRoot: Node | null = null;
 
+    @property(Node)
+    public overlayCeiling: Node | null = null;
+
     private endScreen: UI_Screen | null = null;
     private confettiEffect: Node | null = null;
     private hurtUi: Node | null = null;
@@ -80,6 +83,15 @@ export class UIManager extends Component {
         this.showEndScreen(this.failScreenPrefab, 'failScreenPrefab');
     }
 
+    public hideEndScreen(): void {
+        const screen = this.endScreen;
+        if (!screen) return;
+        this.endScreen = null;
+        screen.hide(false, () => {
+            if (isValid(screen.node)) screen.node.destroy();
+        });
+    }
+
     public showHurt(): void {
         this.showHurtEffect();
         this.scheduleOnce(() => this.showHurtUi(), 0.12);
@@ -95,28 +107,32 @@ export class UIManager extends Component {
         const opacity = hurtUi.getComponent(UIOpacity) ?? hurtUi.addComponent(UIOpacity);
         tween(opacity)
             .to(0.12, { opacity: 0 }, { easing: 'quadIn' })
-            .call(() => hurtUi.destroy())
+            .call(() => {
+                if (isValid(hurtUi)) hurtUi.destroy();
+            })
             .start();
     }
 
     public setupLives(maxLives: number): void {
-        if (this.lifes) {
-            this.lifes.destroy();
-        }
         this.lifeNodes.length = 0;
-        if (!this.lifesPrefab) {
-            console.error('[UIManager] Missing lifesPrefab');
-            return;
-        }
         if (!this.lifePrefab) {
             console.error('[UIManager] Missing lifePrefab');
             return;
         }
 
-        this.lifes = instantiate(this.lifesPrefab);
-        this.lifes.setParent(this.uiRoot ?? this.node);
+        this.lifes = this.getSceneLifesRoot() ?? this.lifes;
+        if (!this.lifes) {
+            if (!this.lifesPrefab) {
+                console.error('[UIManager] Missing lifesPrefab');
+                return;
+            }
+            this.lifes = instantiate(this.lifesPrefab);
+            this.lifes.setParent(this.uiRoot ?? this.node);
+            this.lifes.setPosition(0, 0, 0);
+        }
+        this.lifes.active = true;
+        this.lifes.removeAllChildren();
         this.setVisibleUiLayer(this.lifes);
-        this.lifes.setPosition(0, 0, 0);
         for (let i = 0; i < maxLives; i++) {
             const life = instantiate(this.lifePrefab);
             life.setParent(this.lifes);
@@ -170,7 +186,7 @@ export class UIManager extends Component {
                 onUpdate: () => this.updateFlyCoin(flyCoin, start, target, state.t),
             })
             .call(() => {
-                flyCoin.destroy();
+                if (isValid(flyCoin)) flyCoin.destroy();
                 this.addCoin();
             })
             .start();
@@ -246,7 +262,12 @@ export class UIManager extends Component {
             this.hurtEffect = null;
         }
         if (this.lifes) {
-            this.lifes.destroy();
+            if (this.getSceneLifesRoot() === this.lifes) {
+                this.lifes.removeAllChildren();
+                this.lifes.active = false;
+            } else {
+                this.lifes.destroy();
+            }
             this.lifes = null;
         }
         this.lifeNodes.length = 0;
@@ -299,7 +320,7 @@ export class UIManager extends Component {
             .to(0.05, { opacity: 255 }, { easing: 'quadOut' })
             .to(0.35, { opacity: 0 }, { easing: 'quadIn' })
             .call(() => {
-                this.hurtEffect?.destroy();
+                if (this.hurtEffect && isValid(this.hurtEffect)) this.hurtEffect.destroy();
                 this.hurtEffect = null;
             })
             .start();
@@ -335,6 +356,7 @@ export class UIManager extends Component {
 
         const screenNode = instantiate(prefab);
         screenNode.setParent(this.uiRoot ?? this.node);
+        this.placeBelowOverlayCeiling(screenNode);
         this.endScreen = screenNode.getComponent(UI_Screen);
         if (!this.endScreen) {
             console.error(`[UIManager] Missing UI_Screen on ${fieldName}`);
@@ -342,6 +364,15 @@ export class UIManager extends Component {
             return;
         }
         this.endScreen.show();
+    }
+
+    private getSceneLifesRoot(): Node | null {
+        return this.uiRoot?.getChildByName('Lifes') ?? null;
+    }
+
+    private placeBelowOverlayCeiling(node: Node): void {
+        if (!this.overlayCeiling || node.parent !== this.overlayCeiling.parent) return;
+        node.setSiblingIndex(this.overlayCeiling.getSiblingIndex());
     }
 
     private playConfettiEffect(): void {
@@ -393,7 +424,9 @@ export class UIManager extends Component {
                 .delay(Math.random() * 0.08)
                 .by(0.32 + Math.random() * 0.12, { position: burst, angle: spin * 0.35 }, { easing: 'quadOut' })
                 .by(1.15 + Math.random() * 0.45, { position: fall, angle: spin }, { easing: 'quadIn' })
-                .call(() => piece.destroy())
+                .call(() => {
+                    if (isValid(piece)) piece.destroy();
+                })
                 .start();
         }
     }

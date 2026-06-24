@@ -58,6 +58,7 @@ export class GameManager extends Component {
     private baseOrthoHeight = 0;
     private baseCameraLocalY = 0;
     private baseCameraPitch = 0;
+    private currentLevelIndex = -1;
 
     protected start(): void {
         this.startGame();
@@ -89,6 +90,7 @@ export class GameManager extends Component {
     }
 
     public buildLevel(level: LevelConfig): void {
+        this.currentLevelIndex = LEVELS.indexOf(level);
         this.buildLevels([level]);
     }
 
@@ -243,8 +245,9 @@ export class GameManager extends Component {
         if (this.player) {
             (this.soundManager ?? SoundManager.current)?.playWin(this.player.worldPosition);
         }
+        this.chooseLevelUI?.setLevelResult(this.currentLevelIndex, true);
         this.uiManager.showWin();
-        this.scheduleOnce(() => this.startGame(), this.resultScreenDuration);
+        this.scheduleOnce(() => this.returnToLevelChoice(), this.resultScreenDuration);
         Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
         Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
         const playable = window as Window & { gameEnd?: () => void };
@@ -279,10 +282,16 @@ export class GameManager extends Component {
         }
 
         this.ended = true;
+        this.chooseLevelUI?.setLevelResult(this.currentLevelIndex, false);
         this.uiManager.showFail();
-        this.scheduleOnce(() => this.startGame(), this.resultScreenDuration);
+        this.scheduleOnce(() => this.returnToLevelChoice(), this.resultScreenDuration);
         Analytics.emit(AnalyticEvents.CHALLENGE_FAILED);
         Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
+    }
+
+    private returnToLevelChoice(): void {
+        this.startGame();
+        this.uiManager?.hideEndScreen();
     }
 
     private checkCoinCollect(): void {
