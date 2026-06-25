@@ -202,6 +202,19 @@ export class GridController extends Component {
         return this.localToGrid(local);
     }
 
+    public getTouchedCells(local: Vec3): Vec2[] {
+        const center = this.localToGrid(local);
+        const cells = [center];
+        const dx = local.x - center.x;
+        const dz = local.z - center.y;
+        const threshold = 0.2;
+        if (dx > threshold) cells.push(new Vec2(center.x + 1, center.y));
+        if (dx < -threshold) cells.push(new Vec2(center.x - 1, center.y));
+        if (dz > threshold) cells.push(new Vec2(center.x, center.y + 1));
+        if (dz < -threshold) cells.push(new Vec2(center.x, center.y - 1));
+        return cells;
+    }
+
     public isWalkableGrid(x: number, z: number): boolean {
         const key = this.key(x, z);
         return this.walkableTiles.has(key) && this.fillableTiles.has(key) && !this.filledTiles.has(key) && !this.fillNodes.has(key);
@@ -651,20 +664,8 @@ export class GridController extends Component {
         }
 
         const inner: string[] = [];
-        let skippedFilled = 0;
-        let skippedFillNode = 0;
-        let skippedOutside = 0;
         for (const key of fillable) {
-            if (this.filledTiles.has(key)) {
-                skippedFilled++;
-                continue;
-            }
-            if (this.fillNodes.has(key)) {
-                skippedFillNode++;
-                continue;
-            }
-            if (outside.has(key)) {
-                skippedOutside++;
+            if (this.filledTiles.has(key) || this.fillNodes.has(key) || outside.has(key)) {
                 continue;
             }
             inner.push(key);
@@ -686,15 +687,6 @@ export class GridController extends Component {
         }
     }
 
-    private sampleKeys(keys: Iterable<string>, limit = 12): string[] {
-        const sample: string[] = [];
-        for (const key of keys) {
-            sample.push(key);
-            if (sample.length >= limit) break;
-        }
-        return sample;
-    }
-
     private getKeyBounds(keys: Set<string>): { minX: number; maxX: number; minZ: number; maxZ: number } {
         let minX = Number.MAX_SAFE_INTEGER;
         let maxX = Number.MIN_SAFE_INTEGER;
@@ -711,9 +703,7 @@ export class GridController extends Component {
     }
 
     private getFillDelays(keys: string[], playerCell: Vec2): Map<string, number> {
-        // Фильтруем только строковые ключи
-        const stringKeys = keys.filter(k => typeof k === 'string');
-        const area = new Set<string>(stringKeys);
+        const area = new Set<string>(keys);
         const startKey = this.key(playerCell.x, playerCell.y);
         area.add(startKey);
 
@@ -729,7 +719,7 @@ export class GridController extends Component {
             }
         }
 
-        for (const key of stringKeys) {
+        for (const key of keys) {
             if (delays.has(key)) continue;
             const [x, z] = this.parseTile(key);
             delays.set(key, Math.abs(x - playerCell.x) + Math.abs(z - playerCell.y));
@@ -823,16 +813,7 @@ export class GridController extends Component {
     }
 
     private parseTile(key: string): [number, number] {
-        if (typeof key !== 'string') {
-            console.error('parseTile received non-string:', key, typeof key);
-            return [0, 0];
-        }
-        const parts = key.split(',');
-        const x = Number(parts[0]);
-        const z = Number(parts[1]);
-        if (!Number.isFinite(x) || !Number.isFinite(z)) {
-            return [0, 0];
-        }
+        const [x, z] = key.split(',').map(Number);
         return [x, z];
     }
 

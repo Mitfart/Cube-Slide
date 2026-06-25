@@ -9,9 +9,6 @@ import { UIManager } from '../UI/UIManager';
 import { UI_ChooseLevelController } from '../UI/UI_ChooseLevelController';
 import { UI_GameDownloadBtn } from '../../Cocos_Engine/General/Code/export/UI_GameDownloadBtn';
 const { ccclass, property } = _decorator;
-const DEBUG_ENEMY_HIT = false;
-const DEBUG_ENEMY_HIT_INTERVAL = 30;
-
 interface CameraTarget {
     levelIndex: number;
     nextLevelIndex: number;
@@ -65,7 +62,6 @@ export class GameManager extends Component {
     private hasEmitted25Percent: boolean = false;
     private hasEmitted50Percent: boolean = false;
     private hasEmitted75Percent: boolean = false;
-    private enemyHitLogFrame = 0;
 
     protected onLoad(): void {
         Analytics.emit(AnalyticEvents.LOADING);
@@ -209,7 +205,6 @@ export class GameManager extends Component {
             const enemy = node.addComponent(EnemyController);
             const start = this.getEnemyCell(i, level.enemyPositionStart, level.enemyShape) ?? this.grid.localToGrid(this.grid.getBuiltLevelCenter(i) ?? new Vec3());
             const end = this.getEnemyCell(i, level.enemyPositionEnd, level.enemyShape);
-            if (DEBUG_ENEMY_HIT) console.debug(`[DEBUG-EnemyHit] spawn enemy=${i} start=(${start.x},${start.y}) end=${end ? `(${end.x},${end.y})` : 'none'} shape=${level.enemyShape.length}x${level.enemyShape[0]?.length ?? 0}`);
             enemy.setup(this.grid, this.enemyPrefab, level.enemyShape, start, end ?? undefined, this.soundManager, level.enemyColors, this.enemyDestroyParticlePrefab);
             enemy.onDestroyed = (cell: Vec2) => {
                 this.fillLevelAfterEnemyDestroyed(cell);
@@ -352,61 +347,26 @@ export class GameManager extends Component {
     }
 
     private checkEnemyHit(): void {
-        this.enemyHitLogFrame++;
-        const shouldLog = DEBUG_ENEMY_HIT && this.enemyHitLogFrame % DEBUG_ENEMY_HIT_INTERVAL === 0;
         if (!this.grid || !this.player || this.ended) {
-            if (shouldLog) console.debug(`[DEBUG-EnemyHit] skip grid=${!!this.grid} player=${!!this.player} ended=${this.ended}`);
             return;
         }
 
         const playerController = this.player.getComponent(PlayerController);
         if (!playerController || !playerController.node.activeInHierarchy) {
-            if (shouldLog) console.debug(`[DEBUG-EnemyHit] skip playerController=${!!playerController} active=${!!playerController?.node.activeInHierarchy}`);
             return;
         }
 
         const playerCells = playerController.getTouchedCells();
-        if (shouldLog) console.debug(`[DEBUG-EnemyHit] scan enemies=${this.enemies.length} playerPos=(${playerController.node.position.x.toFixed(2)},${playerController.node.position.z.toFixed(2)}) playerCells=${this.formatCells(playerCells)}`);
-
-        for (let i = 0; i < this.enemies.length; i++) {
-            const enemy = this.enemies[i];
-            const enemyCells = enemy.getOccupiedCells();
-            const filledCells = enemyCells.filter(cell => this.grid!.isFilledGrid(cell.x, cell.y));
-            const nearest = this.getNearestCells(playerCells, enemyCells);
-            if (shouldLog) console.debug(`[DEBUG-EnemyHit] enemy=${i} pos=(${enemy.node.position.x.toFixed(2)},${enemy.node.position.z.toFixed(2)}) cells=${enemyCells.length} filled=${filledCells.length} nearest=${nearest} occupied=${this.formatCells(enemyCells.slice(0, 12))}`);
-
-            for (const cell of enemyCells) {
+        for (const enemy of this.enemies) {
+            for (const cell of enemy.getOccupiedCells()) {
                 const trailHit = this.grid.hasTrailGrid(cell.x, cell.y);
                 const bodyHit = playerCells.some(playerCell => cell.x === playerCell.x && cell.y === playerCell.y);
-                if (shouldLog && (trailHit || bodyHit || playerCells.some(playerCell => Math.abs(cell.x - playerCell.x) <= 1 && Math.abs(cell.y - playerCell.y) <= 1))) {
-                    console.debug(`[DEBUG-EnemyHit] contactCheck enemy=${i} cell=(${cell.x},${cell.y}) trail=${trailHit} body=${bodyHit} playerCells=${this.formatCells(playerCells)}`);
-                }
                 if (trailHit || bodyHit) {
-                    if (DEBUG_ENEMY_HIT) console.debug(`[DEBUG-EnemyHit] HIT enemy=${i} cell=(${cell.x},${cell.y}) trail=${trailHit} body=${bodyHit} enemyCells=${this.formatCells(enemyCells)} playerCells=${this.formatCells(playerCells)}`);
                     this.handlePlayerHit(playerController);
                     return;
                 }
             }
         }
-    }
-
-    private getNearestCells(playerCells: Vec2[], enemyCells: Vec2[]): string {
-        let best = Number.POSITIVE_INFINITY;
-        let bestPair = 'none';
-        for (const playerCell of playerCells) {
-            for (const enemyCell of enemyCells) {
-                const distance = Math.abs(playerCell.x - enemyCell.x) + Math.abs(playerCell.y - enemyCell.y);
-                if (distance < best) {
-                    best = distance;
-                    bestPair = `p=(${playerCell.x},${playerCell.y}) e=(${enemyCell.x},${enemyCell.y}) d=${distance}`;
-                }
-            }
-        }
-        return bestPair;
-    }
-
-    private formatCells(cells: Vec2[]): string {
-        return `[${cells.map(cell => `(${cell.x},${cell.y})`).join(' ')}]`;
     }
 
     private handlePlayerHit(playerController: PlayerController | null | undefined): void {
