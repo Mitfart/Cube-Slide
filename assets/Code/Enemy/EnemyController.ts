@@ -142,12 +142,12 @@ export class EnemyController extends Component {
         for (let i = this.cells.length - 1; i >= 0; i--) {
             const cell = this.cells[i];
             const touched = this.getTouchedCells(cell.node);
-            const hitCell = touched.find(gridCell => this.grid!.isFilledGrid(gridCell.x, gridCell.y));
+            const hitCell = touched.find(gridCell => this.grid!.isSettledFilledGrid(gridCell.x, gridCell.y));
             if (!hitCell) continue;
             const delay = Math.random() * 0.12;
             if (!this.hasNearbyBurst(hitCell, burstCells)) {
                 const soundPosition = cell.node.worldPosition.clone();
-                this.scheduleOnce(() => this.soundManager.playEnemyDestroy(soundPosition), delay);
+                this.scheduleOnce(() => this.soundManager?.playEnemyDestroy(soundPosition), delay);
                 this.spawnDestroyBurst(cell.node, delay);
                 burstCells.add(`${hitCell.x},${hitCell.y}`);
             }

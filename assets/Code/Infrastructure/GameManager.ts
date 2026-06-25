@@ -277,7 +277,13 @@ export class GameManager extends Component {
         
         this.scheduleOnce(() => {
             this.uiManager?.hideEndScreen();
-            this.restartGame();
+            this.clearLevel();
+            this.chooseLevelUI?.setGameManager(this);
+            this.chooseLevelUI?.show(() => {
+                this.enableDownloadEndCard();
+                this.chooseLevelUI?.blockInput();
+                Analytics.emit(AnalyticEvents.ENDCARD_SHOWN);
+            });
         }, this.resultScreenDuration);
 
         Analytics.emit(AnalyticEvents.CHALLENGE_FAILED);
@@ -306,14 +312,25 @@ export class GameManager extends Component {
             this.clearLevel();
             this.chooseLevelUI.setGameManager(this);
             this.chooseLevelUI.show(() => { 
-                this.chooseLevelUI.addComponent(Button);
-                this.chooseLevelUI.addComponent(UI_GameDownloadBtn);
+                this.enableDownloadEndCard();
                 this.chooseLevelUI.blockInput();
                 Analytics.emit(AnalyticEvents.ENDCARD_SHOWN); 
             });
         }, this.resultScreenDuration);
     
         Analytics.emit(AnalyticEvents.CHALLENGE_SOLVED);
+    }
+
+    private enableDownloadEndCard(): void {
+        if (!this.chooseLevelUI) {
+            console.error('[GameManager] Missing chooseLevelUI');
+            return;
+        }
+
+        this.chooseLevelUI.getComponent(Button) ?? this.chooseLevelUI.addComponent(Button);
+        const download = this.chooseLevelUI.getComponent(UI_GameDownloadBtn) ?? this.chooseLevelUI.addComponent(UI_GameDownloadBtn);
+        download.enabled = false;
+        download.enabled = true;
     }
 
     private checkCoinCollect(): void {
@@ -363,7 +380,7 @@ export class GameManager extends Component {
             return;
         }
 
-        this.soundManager.playEnemyHit(playerController.node.worldPosition);
+        this.soundManager?.playEnemyHit(playerController.node.worldPosition);
         const failed = playerController.takeDamage();
         this.uiManager?.popLife();
         if (failed) {

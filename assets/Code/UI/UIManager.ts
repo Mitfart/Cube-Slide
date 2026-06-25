@@ -1,4 +1,4 @@
-import { _decorator, Camera, Component, instantiate, isValid, Label, Node, Prefab, ProgressBar, tween, Tween, UIOpacity, Vec3 } from 'cc';
+import { _decorator, Camera, Component, instantiate, isValid, Label, Layers, Node, Prefab, ProgressBar, tween, Tween, UIOpacity, Vec3 } from 'cc';
 import { UI_Screen } from '../../Cocos_Engine/General/Code/ui/UI_Screen';
 import { AnalyticEvents, Analytics } from '../Infrastructure/Services/Analytics';
 const { ccclass, property } = _decorator;
@@ -88,7 +88,7 @@ export class UIManager extends Component {
 
     public showHurt(): void {
         this.showHurtEffect();
-        this.scheduleOnce(() => this.showHurtUi(), 0.12);
+        this.showHurtUi();
     }
 
     public hideHurt(): void {
@@ -273,7 +273,9 @@ export class UIManager extends Component {
         }
         this.hurtUi = instantiate(this.hurtUiPrefab);
         this.hurtUi.setParent(this.uiRoot ?? this.node);
+        this.prepareHurtUiNode(this.hurtUi);
         this.hurtUi.setPosition(0, 0, 0);
+        this.hurtUi.setSiblingIndex(9999);
         const label = this.hurtUi.getComponentInChildren(Label);
         if (!label) {
             console.error('[UIManager] Missing Label on hurtUiPrefab root');
@@ -282,10 +284,19 @@ export class UIManager extends Component {
         label.string = this.hurtMessages[this.hurtMessageIndex] ?? label.string;
         this.hurtMessageIndex++;
         const opacity = this.hurtUi.getComponent(UIOpacity) ?? this.hurtUi.addComponent(UIOpacity);
-        opacity.opacity = 0;
-        tween(opacity)
-            .to(0.08, { opacity: 255 }, { easing: 'quadOut' })
-            .start();
+        opacity.opacity = 255;
+    }
+
+    private prepareHurtUiNode(node: Node): void {
+        node.active = true;
+        node.layer = Layers.Enum.UI_2D;
+        const opacity = node.getComponent(UIOpacity);
+        if (opacity) {
+            opacity.opacity = 255;
+        }
+        for (const child of node.children) {
+            child.layer = Layers.Enum.UI_2D;
+        }
     }
 
     private showHurtEffect(): void {
@@ -299,7 +310,7 @@ export class UIManager extends Component {
         }
         this.hurtEffect = instantiate(this.hurtEffectPrefab);
         this.hurtEffect.setParent(this.uiRoot ?? this.node);
-        const opacity = this.hurtEffect.getComponent(UIOpacity);
+        const opacity = this.hurtEffect.getComponent(UIOpacity) ?? this.hurtEffect.addComponent(UIOpacity);
         opacity.opacity = 0;
         tween(opacity)
             .to(0.05, { opacity: 255 }, { easing: 'quadOut' })
