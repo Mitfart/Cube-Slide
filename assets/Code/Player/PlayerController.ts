@@ -1,5 +1,5 @@
 import { _decorator, Component, input, Input, EventTouch, Prefab, Vec2, Vec3, tween, Tween } from 'cc';
-import { GridController } from '../Grid/GridController';
+import { GridController } from '../Infrastructure/GridController';
 const { ccclass, property } = _decorator;
 
 @ccclass('PlayerController')
@@ -103,6 +103,23 @@ export class PlayerController extends Component {
 
     public getGridCell(): Vec2 | null {
         return this.grid ? this.grid.localToGrid(this.node.position) : null;
+    }
+
+    public getTouchedCells(): Vec2[] {
+        if (!this.grid) {
+            return [];
+        }
+
+        const center = this.grid.localToGrid(this.node.position);
+        const cells = [center];
+        const dx = this.node.position.x - center.x;
+        const dz = this.node.position.z - center.y;
+        const threshold = 0.2;
+        if (dx > threshold) cells.push(new Vec2(center.x + 1, center.y));
+        if (dx < -threshold) cells.push(new Vec2(center.x - 1, center.y));
+        if (dz > threshold) cells.push(new Vec2(center.x, center.y + 1));
+        if (dz < -threshold) cells.push(new Vec2(center.x, center.y - 1));
+        return cells;
     }
 
     public getFillPrefab(): Prefab | null {

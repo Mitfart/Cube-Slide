@@ -1,6 +1,6 @@
 import { _decorator, Color, Component, GradientRange, Material, MeshRenderer, Node, ParticleSystem, Prefab, Vec2, Vec3, instantiate, tween } from 'cc';
-import { GridController } from '../Grid/GridController';
-import { SoundManager } from '../Services/SoundManager';
+import { GridController } from '../Infrastructure/GridController';
+import { SoundManager } from '../Infrastructure/Services/SoundManager';
 const { ccclass, property } = _decorator;
 
 interface EnemyCell {
@@ -142,7 +142,7 @@ export class EnemyController extends Component {
         for (let i = this.cells.length - 1; i >= 0; i--) {
             const cell = this.cells[i];
             const touched = this.getTouchedCells(cell.node);
-            const hitCell = touched.find(gridCell => this.grid!.isSettledFilledGrid(gridCell.x, gridCell.y));
+            const hitCell = touched.find(gridCell => this.grid!.isFilledGrid(gridCell.x, gridCell.y));
             if (!hitCell) continue;
             const delay = Math.random() * 0.12;
             if (!this.hasNearbyBurst(hitCell, burstCells)) {

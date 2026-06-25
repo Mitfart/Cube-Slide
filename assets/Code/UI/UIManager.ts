@@ -1,6 +1,6 @@
 import { _decorator, Camera, Component, instantiate, isValid, Label, Node, Prefab, ProgressBar, tween, Tween, UIOpacity, Vec3 } from 'cc';
 import { UI_Screen } from '../../Cocos_Engine/General/Code/ui/UI_Screen';
-import { AnalyticEvents, Analytics } from '../Services/Analytics';
+import { AnalyticEvents, Analytics } from '../Infrastructure/Services/Analytics';
 const { ccclass, property } = _decorator;
 
 @ccclass('UIManager')

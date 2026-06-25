@@ -1,6 +1,6 @@
 import { _decorator, Component, instantiate, Node, Prefab, Vec2, Vec3, tween } from 'cc';
 import { LevelConfig } from '../Gameplay/Levels';
-import { SoundManager } from '../Services/SoundManager';
+import { SoundManager } from './Services/SoundManager';
 const { ccclass, property } = _decorator;
 
 interface LevelBounds {

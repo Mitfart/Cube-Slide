@@ -1,10 +1,10 @@
 import { _decorator, Button, Camera, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, Vec2, Vec3, view } from 'cc';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
-import { GridController } from '../Grid/GridController';
+import { GridController } from './GridController';
 import { EnemyController } from '../Enemy/EnemyController';
 import { PlayerController } from '../Player/PlayerController';
-import { Analytics, AnalyticEvents } from '../Services/Analytics';
-import { SoundManager } from '../Services/SoundManager';
+import { Analytics, AnalyticEvents } from './Services/Analytics';
+import { SoundManager } from './Services/SoundManager';
 import { UIManager } from '../UI/UIManager';
 import { UI_ChooseLevelController } from '../UI/UI_ChooseLevelController';
 import { UI_GameDownloadBtn } from '../../Cocos_Engine/General/Code/export/UI_GameDownloadBtn';
@@ -336,11 +336,20 @@ export class GameManager extends Component {
         }
 
         const playerController = this.player.getComponent(PlayerController);
-        const playerCell = playerController?.getGridCell();
+        if (!playerController || !playerController.node.activeInHierarchy) {
+            return;
+        }
+
+        const playerCells = playerController.getTouchedCells();
 
         for (const enemy of this.enemies) {
-            for (const cell of enemy.getOccupiedCells()) {
-                if (this.grid.hasTrailGrid(cell.x, cell.y) || (playerController?.isActiveSlide() && playerCell && cell.x === playerCell.x && cell.y === playerCell.y)) {
+            const enemyCells = enemy.getOccupiedCells();
+            if (enemyCells.some(cell => this.grid!.isFilledGrid(cell.x, cell.y))) {
+                continue;
+            }
+
+            for (const cell of enemyCells) {
+                if (this.grid.hasTrailGrid(cell.x, cell.y) || playerCells.some(playerCell => cell.x === playerCell.x && cell.y === playerCell.y)) {
                     this.handlePlayerHit(playerController);
                     return;
                 }
