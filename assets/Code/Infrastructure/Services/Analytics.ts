@@ -28,10 +28,12 @@ export class Analytics {
     private static readonly emittedEvents = new Set<string>();
 
     public static emit(eventName: string): void {
-        if (this.emittedEvents.has(eventName)) {
-            return;
+        if (eventName != AnalyticEvents.CTA_CLICKED) {
+            if (this.emittedEvents.has(eventName)) {
+                return;
+            }
+            this.emittedEvents.add(eventName);
         }
-        this.emittedEvents.add(eventName);
 
         const playable = window as PlayableWindow;
         if (typeof playable.ALPlayableAnalytics?.trackEvent === 'function') {
