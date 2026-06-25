@@ -2,11 +2,10 @@ import { _decorator, Color, Component, GradientRange, Material, MeshRenderer, No
 import { GridController } from '../Infrastructure/GridController';
 import { SoundManager } from '../Infrastructure/Services/SoundManager';
 const { ccclass, property } = _decorator;
+const DEBUG_ENEMY_HIT = false;
+const DEBUG_ENEMY_HIT_INTERVAL = 30;
 
-interface EnemyCell {
-    offset: Vec2;
-    node: Node;
-}
+type EnemyCell = [number, number, Node];
 
 @ccclass('EnemyController')
 export class EnemyController extends Component {
@@ -31,6 +30,7 @@ export class EnemyController extends Component {
     private endPos = new Vec2();
     private goingToEnd = true;
     private destroyed = false;
+    private debugFrame = 0;
     public onDestroyed: ((cell: Vec2) => void) | null = null;
 
     public setup(grid: GridController, enemyCellPrefab: Prefab, shape: number[][], start: Vec2, end?: Vec2, soundManager: SoundManager | null = null, colors?: Record<number, string>, destroyParticlePrefab: Prefab | null = null): void {
@@ -40,8 +40,11 @@ export class EnemyController extends Component {
         this.soundManager = soundManager;
         this.startPos = start.clone();
         this.endPos = end?.clone() ?? start.clone();
+        if (DEBUG_ENEMY_HIT) console.debug(`[DEBUG-EnemyHit] Enemy.setup start=(${start.x},${start.y}) end=(${this.endPos.x},${this.endPos.y}) rows=${shape.length} rowLengths=${shape.map(row => row.length).join(',')}`);
         this.buildShape(shape, colors);
+        if (DEBUG_ENEMY_HIT) console.debug(`[DEBUG-EnemyHit] Enemy.setup builtCells=${this.cells.length} rawFirst=${this.formatRawCell(this.cells[0])} rawLast=${this.formatRawCell(this.cells[this.cells.length - 1])}`);
         this.node.setPosition(this.grid.gridToLocal(start.x, start.y));
+        if (DEBUG_ENEMY_HIT) console.debug(`[DEBUG-EnemyHit] Enemy.setup nodePos=(${this.node.position.x},${this.node.position.z}) children=${this.node.children.length}`);
         if (end && !this.sameCell(start, end)) {
             this.moveNext();
         }
@@ -52,13 +55,26 @@ export class EnemyController extends Component {
     }
 
     public getOccupiedCells(): Vec2[] {
-        const touched = new Map<string, Vec2>();
-        for (const cell of this.cells) {
-            for (const gridCell of this.getTouchedCells(cell.node)) {
-                touched.set(`${gridCell.x},${gridCell.y}`, gridCell);
+        this.debugFrame++;
+        const shouldLog = DEBUG_ENEMY_HIT && this.debugFrame % DEBUG_ENEMY_HIT_INTERVAL === 0;
+        const seen = new Set<string>();
+        const result: Vec2[] = [];
+        if (shouldLog) console.debug(`[DEBUG-EnemyHit] Enemy.getOccupied start cells=${this.cells.length} children=${this.node.children.length} nodePos=(${this.node.position.x.toFixed(2)},${this.node.position.z.toFixed(2)}) raw0=${this.formatRawCell(this.cells[0])} raw1=${this.formatRawCell(this.cells[1])}`);
+        for (let i = 0; i < this.cells.length; i++) {
+            const cell = this.cells[i];
+            const gridCells = this.getTouchedCells(cell);
+            if (shouldLog && i < 3) console.debug(`[DEBUG-EnemyHit] Enemy.getOccupied cellIndex=${i} raw=${this.formatRawCell(cell)} touched=${this.formatVecs(gridCells)}`);
+            for (const gridCell of gridCells) {
+                const key = `${gridCell.x},${gridCell.y}`;
+                if (seen.has(key)) {
+                    continue;
+                }
+                seen.add(key);
+                result.push(gridCell);
             }
         }
-        return [...touched.values()];
+        if (shouldLog) console.debug(`[DEBUG-EnemyHit] Enemy.getOccupied resultCount=${result.length} result=${this.formatVecs(result.slice(0, 12))}`);
+        return result;
     }
 
     private buildShape(shape: number[][], colors?: Record<number, string>): void {
@@ -69,17 +85,23 @@ export class EnemyController extends Component {
 
         const height = shape.length;
         const width = shape.reduce((max, row) => Math.max(max, row.length), 0);
+        let built = 0;
+        if (DEBUG_ENEMY_HIT) console.debug(`[DEBUG-EnemyHit] Enemy.buildShape height=${height} width=${width} nonZeroPerRow=${shape.map(row => row.filter(value => value !== 0).length).join(',')}`);
         for (let z = 0; z < height; z++) {
             for (let x = 0; x < shape[z].length; x++) {
                 if (shape[z][x] === 0) continue;
-                const cell = new Vec2(x - Math.floor(width / 2), z - Math.floor(height / 2));
+                const offsetX = x - Math.floor(width / 2);
+                const offsetZ = z - Math.floor(height / 2);
                 const node = instantiate(this.enemyCellPrefab);
                 node.setParent(this.node, false);
-                node.setPosition(new Vec3(cell.x, 0, cell.y));
+                node.setPosition(new Vec3(offsetX, 0, offsetZ));
                 this.applyColor(node, colors?.[shape[z][x]]);
-                this.cells.push({ offset: cell, node });
+                this.cells.push([offsetX, offsetZ, node]);
+                built++;
+                if (DEBUG_ENEMY_HIT && built <= 5) console.debug(`[DEBUG-EnemyHit] Enemy.buildShape add#${built} shape[${z}][${x}]=${shape[z][x]} offset=(${offsetX},${offsetZ}) nodePos=(${node.position.x},${node.position.z})`);
             }
         }
+        if (DEBUG_ENEMY_HIT) console.debug(`[DEBUG-EnemyHit] Enemy.buildShape done built=${built} stored=${this.cells.length} children=${this.node.children.length}`);
     }
 
     private applyColor(node: Node, hex?: string): void {
@@ -118,6 +140,7 @@ export class EnemyController extends Component {
         const goal = this.goingToEnd ? this.endPos : this.startPos;
         const target = this.grid.gridToLocal(goal.x, goal.y);
         const distance = Vec3.distance(this.node.position, target);
+        if (DEBUG_ENEMY_HIT) console.debug(`[DEBUG-EnemyHit] Enemy.move current=(${current.x},${current.y}) goal=(${goal.x},${goal.y}) target=(${target.x},${target.z}) distance=${distance.toFixed(2)} goingToEnd=${this.goingToEnd}`);
         tween(this.node)
             .to(distance / this.cellsPerSecond, { position: target }, { easing: 'quadInOut' })
             .call(() => {
@@ -141,17 +164,17 @@ export class EnemyController extends Component {
         const burstCells = new Set<string>();
         for (let i = this.cells.length - 1; i >= 0; i--) {
             const cell = this.cells[i];
-            const touched = this.getTouchedCells(cell.node);
+            const touched = this.getTouchedCells(cell);
             const hitCell = touched.find(gridCell => this.grid!.isSettledFilledGrid(gridCell.x, gridCell.y));
             if (!hitCell) continue;
             const delay = Math.random() * 0.12;
             if (!this.hasNearbyBurst(hitCell, burstCells)) {
-                const soundPosition = cell.node.worldPosition.clone();
+                const soundPosition = cell[2].worldPosition.clone();
                 this.scheduleOnce(() => this.soundManager?.playEnemyDestroy(soundPosition), delay);
-                this.spawnDestroyBurst(cell.node, delay);
+                this.spawnDestroyBurst(cell[2], delay);
                 burstCells.add(`${hitCell.x},${hitCell.y}`);
             }
-            this.playDestroy(cell.node, delay);
+            this.playDestroy(cell[2], delay);
             this.cells.splice(i, 1);
             if (this.cells.length === 0 && !this.destroyed) {
                 this.destroyed = true;
@@ -168,15 +191,18 @@ export class EnemyController extends Component {
             || burstCells.has(`${cell.x},${cell.y - 1}`);
     }
 
-    private getTouchedCells(node: Node): Vec2[] {
+    private getTouchedCells(cell: EnemyCell): Vec2[] {
         if (!this.grid) {
             return [];
         }
 
-        const center = this.grid.worldToGrid(node.worldPosition);
+        const local = new Vec3(
+            this.node.position.x + cell[0],
+            0,
+            this.node.position.z + cell[1],
+        );
+        const center = this.grid.localToGrid(local);
         const cells = [center];
-        const local = new Vec3();
-        this.grid.node.inverseTransformPoint(local, node.worldPosition);
         const dx = local.x - center.x;
         const dz = local.z - center.y;
         const threshold = 0.2;
@@ -185,6 +211,18 @@ export class EnemyController extends Component {
         if (dz > threshold) cells.push(new Vec2(center.x, center.y + 1));
         if (dz < -threshold) cells.push(new Vec2(center.x, center.y - 1));
         return cells;
+    }
+
+    private formatRawCell(cell: EnemyCell | undefined): string {
+        if (!cell) {
+            return 'none';
+        }
+        const anyCell = cell as unknown as Record<string, unknown>;
+        return `array=${Array.isArray(cell)} len=${cell.length} 0=${cell[0]} 1=${cell[1]} keys=${Object.keys(anyCell).join('|')}`;
+    }
+
+    private formatVecs(cells: Vec2[]): string {
+        return `[${cells.map(cell => `(${cell.x},${cell.y})`).join(' ')}]`;
     }
 
     private spawnDestroyBurst(node: Node, delay: number): void {
