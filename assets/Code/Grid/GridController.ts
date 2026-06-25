@@ -92,7 +92,7 @@ export class GridController extends Component {
         this.spawnMergedWalls(tiles);
         for (const [key, symbol] of tiles) {
             if (symbol !== '#') {
-                const [x, z] = this.parseKey(key);
+                const [x, z] = this.parseTile(key);
                 this.walkableTiles.add(key);
                 this.spawnTile(symbol, x, z);
             }
@@ -323,16 +323,12 @@ export class GridController extends Component {
     }
 
     public commitTrailToFill(playerCell: Vec2, fillPrefab: Prefab): void {
-        // Array.from гарантирует обычный массив строк
         const trailKeys = Array.from(this.trailNodes.keys());
         if (trailKeys.length > 0) {
             this.playFillSounds(playerCell, trailKeys.length * 0.015 + 0.16);
         }
         for (let i = 0; i < trailKeys.length; i++) {
-            const key = trailKeys[i];
-            // защита от нестроки
-            if (typeof key !== 'string') continue;
-            const [x, z] = this.parseKey(key);
+            const [x, z] = this.parseTile(trailKeys[i]);
             this.setFilled(x, z, fillPrefab, true, i * 0.015);
         }
         this.trailNodes.clear();
@@ -371,13 +367,18 @@ export class GridController extends Component {
             return;
         }
 
-        const keys = [...this.levelFillableTiles[levelIndex]].filter(key => !this.filledTiles.has(key) && !this.fillNodes.has(key));
+        const keys: string[] = [];
+        for (const key of this.levelFillableTiles[levelIndex]) {
+            if (!this.filledTiles.has(key) && !this.fillNodes.has(key)) {
+                keys.push(key);
+            }
+        }
         const delays = this.getFillDelays(keys, cell);
         if (keys.length > 0) {
             this.playFillSounds(cell, this.getMaxFillDelay(keys, delays) + 0.16);
         }
         for (const key of keys) {
-            const [x, z] = this.parseKey(key);
+            const [x, z] = this.parseTile(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
         }
     }
@@ -394,7 +395,7 @@ export class GridController extends Component {
                 const key = this.key(offsetX + x, offsetZ + y);
                 tiles.set(key, symbol);
                 levelTiles.add(key);
-                if (symbol === '#' && y !== 0) {
+                if (row[x] === '#' && y !== 0) {
                     boundary.add(key);
                 }
                 if (symbol !== '#' && row[x] !== '#') {
@@ -458,7 +459,7 @@ export class GridController extends Component {
         for (const key of [...walls]) {
             if (!walls.has(key)) continue;
 
-            const [x, z] = this.parseKey(key);
+            const [x, z] = this.parseTile(key);
             if (walls.has(this.key(x, z - 1))) continue;
 
             const depth = this.countRun(walls, x, z, 0, 1);
@@ -471,7 +472,7 @@ export class GridController extends Component {
         for (const key of [...walls]) {
             if (!walls.has(key)) continue;
 
-            const [x, z] = this.parseKey(key);
+            const [x, z] = this.parseTile(key);
             if (walls.has(this.key(x - 1, z))) continue;
 
             const width = this.countRun(walls, x, z, 1, 0);
@@ -514,7 +515,7 @@ export class GridController extends Component {
         for (const [key, symbol] of tiles) {
             if (symbol === '#') continue;
 
-            const [tileX, tileZ] = this.parseKey(key);
+            const [tileX, tileZ] = this.parseTile(key);
             const minX = Math.max(shadowMinX, tileX - 0.5);
             const maxX = Math.min(shadowMaxX, tileX + 0.5);
             const minZ = Math.max(shadowMinZ, tileZ - 0.5);
@@ -618,17 +619,16 @@ export class GridController extends Component {
 
     private fillClosedAreas(playerCell: Vec2, fillPrefab: Prefab): void {
         const levelIndex = this.getLevelIndex(playerCell);
-        if (levelIndex < 0) return;
+        if (levelIndex < 0) {
+            return;
+        }
 
-        // Границы по ВСЕМ клеткам уровня (включая стены) – как в оригинале
         const bounds = this.getKeyBounds(this.levelTiles[levelIndex]);
-
-        // blocked: внутренние стены (без верхней границы) + уже заполненные + новый trail
-        const blocked = new Set<string>([
-            ...this.levelBoundaryTiles[levelIndex],
-            ...this.filledTiles,
-            ...this.fillNodes.keys(),
-        ]);
+        const fillable = this.levelFillableTiles[levelIndex];
+        const blocked = new Set<string>();
+        this.addKeys(blocked, this.levelBoundaryTiles[levelIndex]);
+        this.addKeys(blocked, this.filledTiles);
+        this.addKeys(blocked, this.fillNodes.keys());
 
         const outside = new Set<string>();
         const queue = [this.key(bounds.minX - 1, bounds.minZ - 1)];
@@ -643,27 +643,56 @@ export class GridController extends Component {
         };
 
         for (let i = 0; i < queue.length; i++) {
-            const [x, z] = this.parseKey(queue[i]);
+            const [x, z] = this.parseTile(queue[i]);
             add(x + 1, z);
             add(x - 1, z);
             add(x, z + 1);
             add(x, z - 1);
         }
 
-        // inner = все fillable клетки, которые не заполнены и не досягаемы снаружи
-        const inner = Array.from(this.levelFillableTiles[levelIndex]).filter(
-            (key: string) => !this.filledTiles.has(key) && !outside.has(key)
-        );
-
-        if (inner.length === 0) return;
+        const inner: string[] = [];
+        let skippedFilled = 0;
+        let skippedFillNode = 0;
+        let skippedOutside = 0;
+        for (const key of fillable) {
+            if (this.filledTiles.has(key)) {
+                skippedFilled++;
+                continue;
+            }
+            if (this.fillNodes.has(key)) {
+                skippedFillNode++;
+                continue;
+            }
+            if (outside.has(key)) {
+                skippedOutside++;
+                continue;
+            }
+            inner.push(key);
+        }
 
         const delays = this.getFillDelays(inner, playerCell);
-        this.playFillSounds(playerCell, this.getMaxFillDelay(inner, delays) + 0.16);
-
+        if (inner.length > 0) {
+            this.playFillSounds(playerCell, this.getMaxFillDelay(inner, delays) + 0.16);
+        }
         for (const key of inner) {
-            const [x, z] = this.parseKey(key);
+            const [x, z] = this.parseTile(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
         }
+    }
+
+    private addKeys(target: Set<string>, keys: Iterable<string>): void {
+        for (const key of keys) {
+            target.add(key);
+        }
+    }
+
+    private sampleKeys(keys: Iterable<string>, limit = 12): string[] {
+        const sample: string[] = [];
+        for (const key of keys) {
+            sample.push(key);
+            if (sample.length >= limit) break;
+        }
+        return sample;
     }
 
     private getKeyBounds(keys: Set<string>): { minX: number; maxX: number; minZ: number; maxZ: number } {
@@ -672,7 +701,7 @@ export class GridController extends Component {
         let minZ = Number.MAX_SAFE_INTEGER;
         let maxZ = Number.MIN_SAFE_INTEGER;
         for (const key of keys) {
-            const [x, z] = this.parseKey(key);
+            const [x, z] = this.parseTile(key);
             minX = Math.min(minX, x);
             maxX = Math.max(maxX, x);
             minZ = Math.min(minZ, z);
@@ -682,16 +711,16 @@ export class GridController extends Component {
     }
 
     private getFillDelays(keys: string[], playerCell: Vec2): Map<string, number> {
-        // Надёжное приведение к массиву строк
-        const stringKeys = Array.from(keys).filter((k: any) => typeof k === 'string') as string[];
-        const area = new Set(stringKeys);
+        // Фильтруем только строковые ключи
+        const stringKeys = keys.filter(k => typeof k === 'string');
+        const area = new Set<string>(stringKeys);
         const startKey = this.key(playerCell.x, playerCell.y);
         area.add(startKey);
 
         const delays = new Map<string, number>([[startKey, 0]]);
         const queue = [startKey];
         for (let i = 0; i < queue.length; i++) {
-            const [x, z] = this.parseKey(queue[i]);
+            const [x, z] = this.parseTile(queue[i]);
             const nextDelay = (delays.get(queue[i]) ?? 0) + 1;
             for (const next of [this.key(x + 1, z), this.key(x - 1, z), this.key(x, z + 1), this.key(x, z - 1)]) {
                 if (!area.has(next) || delays.has(next)) continue;
@@ -702,7 +731,7 @@ export class GridController extends Component {
 
         for (const key of stringKeys) {
             if (delays.has(key)) continue;
-            const [x, z] = this.parseKey(key);
+            const [x, z] = this.parseTile(key);
             delays.set(key, Math.abs(x - playerCell.x) + Math.abs(z - playerCell.y));
         }
         return delays;
@@ -793,13 +822,18 @@ export class GridController extends Component {
         return `${x},${z}`;
     }
 
-    private parseKey(key: any): [number, number] {
+    private parseTile(key: string): [number, number] {
         if (typeof key !== 'string') {
-            console.warn('parseKey received non-string, converting:', key);
-            key = String(key);
+            console.error('parseTile received non-string:', key, typeof key);
+            return [0, 0];
         }
         const parts = key.split(',');
-        return [Number(parts[0]), Number(parts[1])];
+        const x = Number(parts[0]);
+        const z = Number(parts[1]);
+        if (!Number.isFinite(x) || !Number.isFinite(z)) {
+            return [0, 0];
+        }
+        return [x, z];
     }
 
     private validatePrefabs(level: LevelConfig): boolean {
