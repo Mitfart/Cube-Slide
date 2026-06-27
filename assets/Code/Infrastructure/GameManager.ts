@@ -23,8 +23,8 @@ class LevelViewConfig {
     @property
     public paddingPixels = 0;
 
-    @property(Vec2)
-    public offsetCells = new Vec2();
+    @property
+    public bottomPaddingPixels = 0;
 }
 
 @ccclass('GameManager')
@@ -223,8 +223,8 @@ export class GameManager extends Component {
             return;
         }
 
-        const config = this.levelViews[0];
-        if (!config?.prefab) {
+        const defaultConfig = this.levelViews[0];
+        if (!defaultConfig?.prefab) {
             console.error('[GameManager] Missing levelView prefab');
             return;
         }
@@ -232,16 +232,18 @@ export class GameManager extends Component {
             const center = this.grid.getBuiltLevelCenter(i);
             if (!center) continue;
 
-            const node = instantiate(config.prefab);
+            const config = this.levelViews[i] ?? defaultConfig;
+            const prefab = config.prefab ?? defaultConfig.prefab;
+            const node = instantiate(prefab);
             node.name = `LevelView_${i}`;
             node.setParent(this.grid.node, false);
-            node.setPosition(center.x + config.offsetCells.x, center.y, center.z + config.offsetCells.y);
 
             const sprite = node.getComponent(SpriteRenderer) ?? node.getComponentInChildren(SpriteRenderer);
-            const spriteFrame = sprite.spriteFrame;
-            const spriteWidth = spriteFrame.width;
+            const spriteFrame = sprite?.spriteFrame;
+            const spriteWidth = spriteFrame?.width ?? 0;
+            const spriteHeight = spriteFrame?.height ?? 0;
 
-            if (spriteWidth <= 0) {
+            if (spriteWidth <= 0 || spriteHeight <= 0) {
                 console.error('[GameManager] Missing LevelView SpriteRenderer spriteFrame size');
                 node.destroy();
                 continue;
@@ -255,6 +257,8 @@ export class GameManager extends Component {
             }
 
             const scale = this.getLevelWidth(levels[i]) / (contentWidthPixels / 100);
+            const bottomOffset = (spriteHeight / 2 - config.bottomPaddingPixels) / 100 * scale;
+            node.setPosition(center.x, center.y, this.getLevelBottom(levels[i], center) - bottomOffset + 0.5);
             node.setScale(scale, scale, scale);
             this.spawnedLevelViews.push(node);
         }
@@ -269,6 +273,10 @@ export class GameManager extends Component {
 
     private getLevelWidth(level: LevelConfig): number {
         return level.rows.reduce((width, row) => Math.max(width, row.replace(/#/g, '').length), 0);
+    }
+
+    private getLevelBottom(level: LevelConfig, center: Vec3): number {
+        return center.z + (level.rows.length - 3) / 2;
     }
 
     private spawnEnemies(levels: LevelConfig[]): void {

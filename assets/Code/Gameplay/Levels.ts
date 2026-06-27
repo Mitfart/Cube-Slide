@@ -17,7 +17,7 @@ export interface LevelConfig {
     playerColor?: string;
 }
 
-const STATIC_LEVEL_ROWS = [
+const PIG_LEVEL_ROWS = [
     '#########################',
     '#.......................#',
     '#.......................#',
@@ -54,9 +54,71 @@ const STATIC_LEVEL_ROWS = [
     '#########################',
 ];
 
-function createLevel(enemyShape: number[][], enemyColors?: Record<number, string>, playerColor?: string): LevelConfig {
+const NARROW_LEVEL_ROWS = [
+    '###################',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#.................#',
+    '#...#.........#...#',
+    '#####....p....#####',
+    '###################',
+];
+
+const PARROT_LEVEL_ROWS = [
+    '######################',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#....................#',
+    '#..#.............#...#',
+    '####......p......#####',
+    '######################',
+];
+
+function createLevel(rows: string[], enemyShape: number[][], enemyColors?: Record<number, string>, playerColor?: string): LevelConfig {
     return {
-        rows: STATIC_LEVEL_ROWS,
+        rows,
         tunnelLength: 6,
         cameraOffsetZPortrait: 0,
         cameraOffsetZLandscape: -1.5,
@@ -71,8 +133,8 @@ function createLevel(enemyShape: number[][], enemyColors?: Record<number, string
 }
 
 export const LEVELS: LevelConfig[] = [
-    createLevel(PIG_SHAPE, LEVEL_ENEMY_COLORS),
-    createLevel(BANANA_SHAPE, LEVEL_ENEMY_COLORS),
-    createLevel(PARROT_SHAPE, LEVEL_ENEMY_COLORS),
-    createLevel(CUTE_FACE_SHAPE, { 1: LEVEL_ENEMY_COLORS[9] }, '#ff60ee'),
+    createLevel(PIG_LEVEL_ROWS, PIG_SHAPE, LEVEL_ENEMY_COLORS),
+    createLevel(NARROW_LEVEL_ROWS, BANANA_SHAPE, LEVEL_ENEMY_COLORS),
+    createLevel(PARROT_LEVEL_ROWS, PARROT_SHAPE, LEVEL_ENEMY_COLORS),
+    createLevel(NARROW_LEVEL_ROWS, CUTE_FACE_SHAPE, { 1: LEVEL_ENEMY_COLORS[9] }, '#ff60ee'),
 ];
