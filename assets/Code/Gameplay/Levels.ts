@@ -14,40 +14,65 @@ export interface LevelConfig {
     enemyColors?: Record<number, string>;
     enemyPositionStart?: Vec2;
     enemyPositionEnd?: Vec2;
+    playerColor?: string;
 }
 
-function createEnemyLevel(enemyShape: number[][], enemyColors?: Record<number, string>): LevelConfig {
-    const width = makeOdd(getShapeWidth(enemyShape) + 2);
-    const height = makeOdd(enemyShape.length + 14);
-    const wall = '#'.repeat(width);
-    const floor = `#${'.'.repeat(width - 2)}#`;
-    const coinFloor = width >= 4 ? `#C${'.'.repeat(width - 4)}C#` : floor;
+const STATIC_LEVEL_ROWS = [
+    '#########################',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#.......................#',
+    '#....#.............#....#',
+    '######......p......######',
+    '#########################',
+];
 
+function createLevel(enemyShape: number[][], enemyColors?: Record<number, string>, playerColor?: string): LevelConfig {
     return {
-        rows: [wall, coinFloor, ...Array.from({ length: height - 4 }, () => floor), coinFloor, wall],
+        rows: STATIC_LEVEL_ROWS,
         tunnelLength: 6,
         cameraOffsetZPortrait: 0,
         cameraOffsetZLandscape: -1.5,
-        cameraZoomPortrait: Math.max(1, height / 16),
-        cameraZoomLandscape: Math.max(0.8, width / 19),
+        cameraZoomPortrait: 33 / 16,
+        cameraZoomLandscape: 25 / 19,
         enemyShape,
         enemyColors,
         enemyPositionStart: new Vec2(0, 0),
         enemyPositionEnd: new Vec2(0, 12),
+        playerColor,
     };
 }
 
-function getShapeWidth(shape: number[][]): number {
-    return shape.reduce((max, row) => Math.max(max, row.length), 0);
-}
-
-function makeOdd(value: number): number {
-    return value % 2 === 0 ? value + 1 : value;
-}
-
 export const LEVELS: LevelConfig[] = [
-    createEnemyLevel(PIG_SHAPE, LEVEL_ENEMY_COLORS),
-    createEnemyLevel(BANANA_SHAPE, LEVEL_ENEMY_COLORS),
-    createEnemyLevel(PARROT_SHAPE, LEVEL_ENEMY_COLORS),
-    createEnemyLevel(CUTE_FACE_SHAPE, { 1: LEVEL_ENEMY_COLORS[9] }),
+    createLevel(PIG_SHAPE, LEVEL_ENEMY_COLORS),
+    createLevel(BANANA_SHAPE, LEVEL_ENEMY_COLORS),
+    createLevel(PARROT_SHAPE, LEVEL_ENEMY_COLORS),
+    createLevel(CUTE_FACE_SHAPE, { 1: LEVEL_ENEMY_COLORS[9] }, '#ff60ee'),
 ];

@@ -1,4 +1,4 @@
-import { _decorator, Component, instantiate, Node, Prefab, Vec2, Vec3, tween } from 'cc';
+import { _decorator, Color, Component, instantiate, MeshRenderer, Node, Prefab, Vec2, Vec3, tween } from 'cc';
 import { LevelConfig } from '../Gameplay/Levels';
 import { SoundManager } from './Services/SoundManager';
 const { ccclass, property } = _decorator;
@@ -81,7 +81,7 @@ export class GridController extends Component {
             this.levelExitZ.push(bounds.tunnelMinZ - 2);
             this.levelLockNodes.push(this.spawnTunnelLock(base.centerX, bounds.tunnelStartZ));
             this.levelCenters.push(this.gridToLocal(base.centerX, base.centerZ + zOffset));
-            this.levelSpawns.push(this.gridToLocal(base.centerX, base.bottomZ + zOffset - 1));
+            this.levelSpawns.push(this.getLevelSpawn(level.rows, level.tunnelLength, zOffset) ?? this.gridToLocal(base.centerX, base.bottomZ + zOffset - 1));
             if (i > 0) {
                 this.cameraTransitionZ.push(new Vec2(previousTunnelStartZ, base.bottomZ + zOffset));
             }
@@ -225,10 +225,6 @@ export class GridController extends Component {
         return this.filledTiles.has(key) || this.fillNodes.has(key);
     }
 
-    public isSettledFilledGrid(x: number, z: number): boolean {
-        return this.filledTiles.has(this.key(x, z));
-    }
-
     public isEmptyFloorGrid(x: number, z: number): boolean {
         const key = this.key(x, z);
         return this.fillableTiles.has(key) && !this.filledTiles.has(key) && !this.fillNodes.has(key) && !this.trailNodes.has(key);
@@ -285,12 +281,12 @@ export class GridController extends Component {
         }
     }
 
-    public fillCell(x: number, z: number, fillPrefab: Prefab): void {
+    public fillCell(x: number, z: number, fillPrefab: Prefab, color?: Color): void {
         const levelIndex = this.getLevelIndex(new Vec2(x, z));
         if (levelIndex >= 0) {
             this.levelProgressIgnoredTiles[levelIndex].add(this.key(x, z));
         }
-        this.setFilled(x, z, fillPrefab, true, 0, true);
+        this.setFilled(x, z, fillPrefab, true, 0, true, color);
     }
 
     public getCompleteLevelExit(playerCell: Vec2): Vec3 | null {
@@ -323,29 +319,31 @@ export class GridController extends Component {
         return true;
     }
 
-    public placeTrail(x: number, z: number, prefab: Prefab): void {
+    public placeTrail(x: number, z: number, prefab: Prefab, color?: Color): Node | null {
         const key = this.key(x, z);
         if (!this.isEmptyFloorGrid(x, z)) {
-            return;
+            return null;
         }
 
         const trail = this.spawnPrefab(prefab, x, z);
+        if (color) this.applyMaterialColor(trail, color);
         this.soundManager.playCellTrail(trail.worldPosition);
         this.playTrailSpawn(trail);
         this.trailNodes.set(key, trail);
+        return trail;
     }
 
-    public commitTrailToFill(playerCell: Vec2, fillPrefab: Prefab): void {
+    public commitTrailToFill(playerCell: Vec2, fillPrefab: Prefab, color?: Color): void {
         const trailKeys = Array.from(this.trailNodes.keys());
         if (trailKeys.length > 0) {
             this.playFillSounds(playerCell, trailKeys.length * 0.015 + 0.16);
         }
         for (let i = 0; i < trailKeys.length; i++) {
             const [x, z] = this.parseTile(trailKeys[i]);
-            this.setFilled(x, z, fillPrefab, true, i * 0.015);
+            this.setFilled(x, z, fillPrefab, true, i * 0.015, false, color);
         }
         this.trailNodes.clear();
-        this.fillClosedAreas(playerCell, fillPrefab);
+        this.fillClosedAreas(playerCell, fillPrefab, color);
     }
 
     public clearPaintForLevel(cell: Vec2, keepFilledCell: Vec2 | null = null): void {
@@ -374,7 +372,7 @@ export class GridController extends Component {
         }
     }
 
-    public fillRemainingLevel(cell: Vec2, fillPrefab: Prefab): void {
+    public fillRemainingLevel(cell: Vec2, fillPrefab: Prefab, color?: Color): void {
         const levelIndex = this.getLevelIndex(cell);
         if (levelIndex < 0) {
             return;
@@ -392,7 +390,7 @@ export class GridController extends Component {
         }
         for (const key of keys) {
             const [x, z] = this.parseTile(key);
-            this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
+            this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04, false, color);
         }
     }
 
@@ -556,7 +554,7 @@ export class GridController extends Component {
         return tile;
     }
 
-    private setFilled(x: number, z: number, prefab: Prefab, animate: boolean, delay = 0, force = false): void {
+    private setFilled(x: number, z: number, prefab: Prefab, animate: boolean, delay = 0, force = false, color?: Color): void {
         const key = this.key(x, z);
         if ((!force && !this.fillableTiles.has(key)) || this.fillNodes.has(key)) {
             return;
@@ -569,6 +567,7 @@ export class GridController extends Component {
         }
 
         const fill = this.spawnPrefab(prefab, x, z);
+        if (color) this.applyMaterialColor(fill, color);
         this.fillNodes.set(key, fill);
         if (animate) {
             this.playFillSpawn(fill, delay, () => {
@@ -580,6 +579,14 @@ export class GridController extends Component {
 
         this.filledTiles.add(key);
         this.collectCoinKey(key);
+    }
+
+    private applyMaterialColor(node: Node, color: Color): void {
+        const renderer = node.getComponent(MeshRenderer);
+        renderer?.getMaterialInstance(0)?.setProperty('mainColor', color);
+        for (const child of node.children) {
+            this.applyMaterialColor(child, color);
+        }
     }
 
     private playTrailSpawn(node: Node): void {
@@ -630,7 +637,7 @@ export class GridController extends Component {
         return keys.reduce((max, key) => Math.max(max, delays.get(key) ?? 0), 0) * 0.04;
     }
 
-    private fillClosedAreas(playerCell: Vec2, fillPrefab: Prefab): void {
+    private fillClosedAreas(playerCell: Vec2, fillPrefab: Prefab, color?: Color): void {
         const levelIndex = this.getLevelIndex(playerCell);
         if (levelIndex < 0) {
             return;
@@ -677,7 +684,7 @@ export class GridController extends Component {
         }
         for (const key of inner) {
             const [x, z] = this.parseTile(key);
-            this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04);
+            this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04, false, color);
         }
     }
 
@@ -764,8 +771,17 @@ export class GridController extends Component {
     }
 
     private getPrefab(symbol: string): Prefab | null {
-        if (symbol === '.' || symbol === 'C') return this.levelFloor;
+        if (symbol === '.' || symbol === 'C' || symbol === 'p') return this.levelFloor;
         if (symbol === 'L') return this.levelLock;
+        return null;
+    }
+
+    private getLevelSpawn(rows: string[], tunnelLength: number, zOffset: number): Vec3 | null {
+        const bounds = this.getLevelBounds(rows, tunnelLength);
+        for (let y = 0; y < rows.length; y++) {
+            const x = rows[y].indexOf('p');
+            if (x >= 0) return this.gridToLocal(bounds.offsetX + x, bounds.offsetZ + zOffset + y);
+        }
         return null;
     }
 
@@ -793,8 +809,8 @@ export class GridController extends Component {
     private getLevelBounds(rows: string[], tunnelLength: number): LevelBounds {
         const width = this.getWidth(rows);
         const depth = rows.length + tunnelLength;
-        const offsetX = -(width - 1) / 2;
-        const offsetZ = -(depth - 1) / 2;
+        const offsetX = -Math.floor(width / 2);
+        const offsetZ = -Math.floor(depth / 2);
         return {
             offsetX,
             offsetZ,

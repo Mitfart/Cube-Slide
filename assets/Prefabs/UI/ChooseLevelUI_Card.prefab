@@ -74,7 +74,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Background",
+    "_name": "Border",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -170,8 +170,8 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
+      "r": 179,
+      "g": 207,
       "b": 255,
       "a": 255
     },

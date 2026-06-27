@@ -203,6 +203,14 @@
       "__uuid__": "ffb8b83c-5d6c-472c-b1ff-ac073cd3b9f0",
       "__expectedType__": "cc.Prefab"
     },
+    "playerColor": {
+      "__type__": "cc.Color",
+      "r": 239,
+      "g": 255,
+      "b": 8,
+      "a": 255
+    },
+    "maxLives": 3,
     "_id": ""
   },
   {

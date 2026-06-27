@@ -1,4 +1,4 @@
-import { _decorator, Button, Camera, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, Vec2, Vec3, view } from 'cc';
+import { _decorator, Button, Camera, Color, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, SpriteRenderer, Vec2, Vec3, view } from 'cc';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
 import { GridController } from './GridController';
 import { EnemyController } from '../Enemy/EnemyController';
@@ -13,6 +13,18 @@ interface CameraTarget {
     levelIndex: number;
     nextLevelIndex: number;
     t: number;
+}
+
+@ccclass('LevelViewConfig')
+class LevelViewConfig {
+    @property(Prefab)
+    public prefab: Prefab | null = null;
+
+    @property
+    public paddingPixels = 0;
+
+    @property(Vec2)
+    public offsetCells = new Vec2();
 }
 
 @ccclass('GameManager')
@@ -50,8 +62,12 @@ export class GameManager extends Component {
     @property
     public minimumDragDistance = 40;
 
+    @property([LevelViewConfig])
+    public levelViews: LevelViewConfig[] = [];
+
     private player: Node | null = null;
     private readonly enemies: EnemyController[] = [];
+    private readonly spawnedLevelViews: Node[] = [];
     private ended = false;
     private currentLevels: LevelConfig[] = [];
     private baseOrthoHeight = 0;
@@ -134,6 +150,7 @@ export class GameManager extends Component {
             this.uiManager.collectCoin(coin, this.camera);
         };
         this.grid.buildLevels(levels);
+        this.spawnLevelViews(levels);
         this.spawnPlayer(levels[0]);
         this.spawnEnemies(levels);
         this.updateCamera();
@@ -154,6 +171,7 @@ export class GameManager extends Component {
             this.player = null;
         }
         this.clearEnemies();
+        this.clearLevelViews();
     }
 
     private spawnPlayer(level: LevelConfig): void {
@@ -181,8 +199,76 @@ export class GameManager extends Component {
         }
         playerController.onGameEnd = () => this.endGame();
         playerController.minimumDragDistance = this.minimumDragDistance;
+        const playerColor = this.parseColor(level.playerColor);
+        if (playerColor) playerController.playerColor = playerColor;
         playerController.setGrid(this.grid);
         this.uiManager?.setupLives(playerController.maxLives);
+    }
+
+    private parseColor(hex: string | undefined): Color | null {
+        if (!hex) return null;
+        const match = /^#?([0-9a-f]{6})$/i.exec(hex);
+        if (!match) {
+            console.error('[GameManager] Invalid playerColor');
+            return null;
+        }
+        const value = Number.parseInt(match[1], 16);
+        return new Color((value >> 16) & 255, (value >> 8) & 255, value & 255, 255);
+    }
+
+    private spawnLevelViews(levels: LevelConfig[]): void {
+        this.clearLevelViews();
+        if (!this.grid) {
+            console.error('[GameManager] Missing grid');
+            return;
+        }
+
+        const config = this.levelViews[0];
+        if (!config?.prefab) {
+            console.error('[GameManager] Missing levelView prefab');
+            return;
+        }
+        for (let i = 0; i < levels.length; i++) {
+            const center = this.grid.getBuiltLevelCenter(i);
+            if (!center) continue;
+
+            const node = instantiate(config.prefab);
+            node.name = `LevelView_${i}`;
+            node.setParent(this.grid.node, false);
+            node.setPosition(center.x + config.offsetCells.x, center.y, center.z + config.offsetCells.y);
+
+            const sprite = node.getComponent(SpriteRenderer) ?? node.getComponentInChildren(SpriteRenderer);
+            const spriteFrame = sprite.spriteFrame;
+            const spriteWidth = spriteFrame.width;
+
+            if (spriteWidth <= 0) {
+                console.error('[GameManager] Missing LevelView SpriteRenderer spriteFrame size');
+                node.destroy();
+                continue;
+            }
+
+            const contentWidthPixels = spriteWidth - config.paddingPixels * 2;
+            if (contentWidthPixels <= 0) {
+                console.error('[GameManager] LevelView padding is larger than spriteFrame width');
+                node.destroy();
+                continue;
+            }
+
+            const scale = this.getLevelWidth(levels[i]) / (contentWidthPixels / 100);
+            node.setScale(scale, scale, scale);
+            this.spawnedLevelViews.push(node);
+        }
+    }
+
+    private clearLevelViews(): void {
+        for (const view of this.spawnedLevelViews) {
+            view.destroy();
+        }
+        this.spawnedLevelViews.length = 0;
+    }
+
+    private getLevelWidth(level: LevelConfig): number {
+        return level.rows.reduce((width, row) => Math.max(width, row.replace(/#/g, '').length), 0);
     }
 
     private spawnEnemies(levels: LevelConfig[]): void {
@@ -240,7 +326,7 @@ export class GameManager extends Component {
             return;
         }
 
-        this.grid.fillRemainingLevel(cell, fillPrefab);
+        this.grid.fillRemainingLevel(cell, fillPrefab, playerController.getFillColor());
         playerController.waitForLevelComplete(playerController.getGridCell() ?? cell);
     }
 
@@ -251,7 +337,7 @@ export class GameManager extends Component {
         }
         const effect = instantiate(this.confettiEffectPrefab);
         effect.setParent(this.node.parent ?? this.node);
-        effect.setPosition(0, 6, 0);
+        effect.setPosition(0, this.camera.node.worldPosition.y - 5, 10);
         effect.setScale(new Vec3(2.2, 1, 2.2));
         const particles = effect.getComponent(ParticleSystem);
         particles?.stop();

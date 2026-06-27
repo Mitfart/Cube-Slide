@@ -44,10 +44,11 @@ export class EnemyController extends Component {
     }
 
     protected update(): void {
-        this.destroyFilledCells();
+        this.cullFilledCells();
     }
 
     public getOccupiedCells(): Vec2[] {
+        this.cullFilledCells();
         const seen = new Set<string>();
         const result: Vec2[] = [];
         for (const cell of this.cells) {
@@ -135,7 +136,7 @@ export class EnemyController extends Component {
         return a.x === b.x && a.y === b.y;
     }
 
-    private destroyFilledCells(): void {
+    private cullFilledCells(): void {
         if (!this.grid) {
             console.error('[EnemyController] Missing grid');
             return;
@@ -145,7 +146,7 @@ export class EnemyController extends Component {
         for (let i = this.cells.length - 1; i >= 0; i--) {
             const cell = this.cells[i];
             const touched = this.getTouchedCells(cell);
-            const hitCell = touched.find(gridCell => this.grid!.isSettledFilledGrid(gridCell.x, gridCell.y));
+            const hitCell = touched.find(gridCell => this.grid!.isFilledGrid(gridCell.x, gridCell.y));
             if (!hitCell) continue;
             const delay = Math.random() * 0.12;
             if (!this.hasNearbyBurst(hitCell, burstCells)) {

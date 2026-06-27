@@ -1,4 +1,4 @@
-import { _decorator, Component, input, Input, EventTouch, Prefab, Vec2, Vec3, tween, Tween } from 'cc';
+import { _decorator, Color, Component, input, Input, EventTouch, MeshRenderer, Prefab, Vec2, Vec3, tween, Tween, Node } from 'cc';
 import { GridController } from '../Infrastructure/GridController';
 const { ccclass, property } = _decorator;
 
@@ -15,6 +15,9 @@ export class PlayerController extends Component {
 
     @property(Prefab)
     public playerFill: Prefab | null = null;
+
+    @property(Color)
+    public playerColor = new Color(110, 202, 58, 255);
 
     @property
     public maxLives = 3;
@@ -66,6 +69,7 @@ export class PlayerController extends Component {
     public setGrid(grid: GridController): void {
         this.grid = grid;
         this.currentLives = this.maxLives;
+        this.applyMaterialColor(this.node, this.playerColor);
         this.fillSpawnCell();
     }
 
@@ -219,7 +223,7 @@ export class PlayerController extends Component {
         }
 
         const cell = this.grid.localToGrid(this.node.position);
-        this.grid.commitTrailToFill(cell, this.playerFill);
+        this.grid.commitTrailToFill(cell, this.playerFill, this.getFillColor());
         this.hasTrail = false;
         this.pendingLevelCompleteCell = this.grid.isLevelCompleteOrFilling(cell) ? cell : null;
         return true;
@@ -268,7 +272,7 @@ export class PlayerController extends Component {
         }
 
         const cell = this.grid.localToGrid(this.node.position);
-        this.grid.fillCell(cell.x, cell.y, this.playerFill);
+        this.grid.fillCell(cell.x, cell.y, this.playerFill, this.getFillColor());
     }
 
     private paintCurrentCell(): void {
@@ -286,8 +290,57 @@ export class PlayerController extends Component {
             return;
         }
 
-        this.grid.placeTrail(cell.x, cell.y, this.playerTrail);
-        this.hasTrail = true;
+        const trail = this.grid.placeTrail(cell.x, cell.y, this.playerTrail, this.getGhostColor());
+        this.hasTrail = !!trail;
+    }
+
+    public getFillColor(): Color {
+        return this.shiftColor(new Color(79, 153, 39, 255));
+    }
+
+    public getGhostColor(): Color {
+        return this.shiftColor(new Color(120, 209, 70, 100));
+    }
+
+    private shiftColor(source: Color): Color {
+        const base = this.rgbToHsv(new Color(110, 202, 58, 255));
+        const sourceHsv = this.rgbToHsv(source);
+        const target = this.rgbToHsv(this.playerColor);
+        return this.hsvToRgb(target.h, Math.min(1, target.s * sourceHsv.s / base.s), Math.min(1, target.v * sourceHsv.v / base.v), source.a);
+    }
+
+    private rgbToHsv(color: Color): { h: number; s: number; v: number } {
+        const r = color.r / 255;
+        const g = color.g / 255;
+        const b = color.b / 255;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const delta = max - min;
+        let h = 0;
+        if (delta > 0) {
+            h = max === r ? ((g - b) / delta) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
+            h /= 6;
+            if (h < 0) h += 1;
+        }
+        return { h, s: max === 0 ? 0 : delta / max, v: max };
+    }
+
+    private hsvToRgb(h: number, s: number, v: number, a: number): Color {
+        const i = Math.floor(h * 6);
+        const f = h * 6 - i;
+        const p = v * (1 - s);
+        const q = v * (1 - f * s);
+        const t = v * (1 - (1 - f) * s);
+        const colors = [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6];
+        return new Color(Math.round(colors[0] * 255), Math.round(colors[1] * 255), Math.round(colors[2] * 255), a);
+    }
+
+    private applyMaterialColor(node: Node, color: Color): void {
+        const renderer = node.getComponent(MeshRenderer);
+        renderer?.getMaterialInstance(0)?.setProperty('mainColor', color);
+        for (const child of node.children) {
+            this.applyMaterialColor(child, color);
+        }
     }
 
     private hasRequiredFields(): boolean {
