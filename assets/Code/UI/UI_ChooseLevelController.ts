@@ -108,17 +108,35 @@ export class UI_ChooseLevelController extends Component {
         let columns = 1;
         let rows = count;
         let cell = 0;
+        const constraint = gridLayout.constraint;
+        const constraintNum = Math.max(1, gridLayout.constraintNum);
 
-        for (let candidateColumns = 1; candidateColumns <= count; candidateColumns++) {
-            const candidateRows = Math.ceil(count / candidateColumns);
-            const availableWidth = containerWidth - spacingX * (candidateColumns - 1);
-            const availableHeight = containerHeight - spacingY * (candidateRows - 1);
-            const candidateCell = Math.min(availableWidth / candidateColumns, availableHeight / candidateRows);
+        if (constraint === Layout.Constraint.FIXED_COL) {
+            columns = Math.min(count, constraintNum);
+            rows = Math.ceil(count / columns);
+            cell = Math.min(
+                (containerWidth - spacingX * (columns - 1)) / columns,
+                (containerHeight - spacingY * (rows - 1)) / rows,
+            );
+        } else if (constraint === Layout.Constraint.FIXED_ROW) {
+            rows = Math.min(count, constraintNum);
+            columns = Math.ceil(count / rows);
+            cell = Math.min(
+                (containerWidth - spacingX * (columns - 1)) / columns,
+                (containerHeight - spacingY * (rows - 1)) / rows,
+            );
+        } else {
+            for (let candidateColumns = 1; candidateColumns <= count; candidateColumns++) {
+                const candidateRows = Math.ceil(count / candidateColumns);
+                const availableWidth = containerWidth - spacingX * (candidateColumns - 1);
+                const availableHeight = containerHeight - spacingY * (candidateRows - 1);
+                const candidateCell = Math.min(availableWidth / candidateColumns, availableHeight / candidateRows);
 
-            if (candidateCell > cell) {
-                columns = candidateColumns;
-                rows = candidateRows;
-                cell = candidateCell;
+                if (candidateCell > cell) {
+                    columns = candidateColumns;
+                    rows = candidateRows;
+                    cell = candidateCell;
+                }
             }
         }
 
@@ -128,8 +146,8 @@ export class UI_ChooseLevelController extends Component {
 
         gridLayout.type = Layout.Type.GRID;
         gridLayout.resizeMode = Layout.ResizeMode.CHILDREN;
-        gridLayout.constraint = Layout.Constraint.FIXED_COL;
-        gridLayout.constraintNum = columns;
+        gridLayout.constraint = constraint === Layout.Constraint.FIXED_ROW ? Layout.Constraint.FIXED_ROW : Layout.Constraint.FIXED_COL;
+        gridLayout.constraintNum = constraint === Layout.Constraint.FIXED_ROW ? rows : columns;
         gridLayout.cellSize = new Size(cell, cell);
         gridLayout.paddingLeft = (containerWidth - usedWidth) * 0.5;
         gridLayout.paddingRight = gridLayout.paddingLeft;

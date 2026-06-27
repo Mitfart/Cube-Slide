@@ -29,7 +29,7 @@
     "_active": true,
     "_components": [],
     "_prefab": {
-      "__id__": 149
+      "__id__": 154
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -60,7 +60,7 @@
     },
     "autoReleaseAssets": false,
     "_globals": {
-      "__id__": 169
+      "__id__": 174
     },
     "_id": "afc410bd-9c3e-499d-be8e-f8fc33d48467"
   },
@@ -2246,7 +2246,7 @@
       "__expectedType__": "cc.Prefab"
     },
     "camera": {
-      "__id__": 147
+      "__id__": 150
     },
     "uiManager": {
       "__id__": 4
@@ -2259,7 +2259,15 @@
     "minimumDragDistance": 40,
     "levelViews": [
       {
-        "__id__": 148
+        "__id__": 151
+      }
+    ],
+    "playerColorThemes": [
+      {
+        "__id__": 152
+      },
+      {
+        "__id__": 153
       }
     ],
     "_id": "b5ZQiEzUdOeLYPmIpmtLqO"
@@ -2359,11 +2367,15 @@
     "_parent": {
       "__id__": 145
     },
-    "_children": [],
+    "_children": [
+      {
+        "__id__": 147
+      }
+    ],
     "_active": true,
     "_components": [
       {
-        "__id__": 147
+        "__id__": 150
       }
     ],
     "_prefab": null,
@@ -2395,6 +2407,102 @@
       "z": 0
     },
     "_id": "df2iEAbW1MKpbWWWvRQwNP"
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "Directional Light",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": {
+      "__id__": 146
+    },
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 148
+      }
+    ],
+    "_prefab": null,
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "w": 1
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "_mobility": 0,
+    "_layer": 1073741824,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_id": "21Rjm34yVHjJX8+2gTDB1z"
+  },
+  {
+    "__type__": "cc.DirectionalLight",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 147
+    },
+    "_enabled": true,
+    "__prefab": null,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_useColorTemperature": false,
+    "_colorTemperature": 6550,
+    "_staticSettings": {
+      "__id__": 149
+    },
+    "_visibility": -325058561,
+    "_illuminanceHDR": 65000,
+    "_illuminance": 65000,
+    "_illuminanceLDR": 1.6927083333333335,
+    "_shadowEnabled": false,
+    "_shadowPcf": 0,
+    "_shadowBias": 0.00001,
+    "_shadowNormalBias": 0,
+    "_shadowSaturation": 1,
+    "_shadowDistance": 50,
+    "_shadowInvisibleOcclusionRange": 200,
+    "_csmLevel": 4,
+    "_csmLayerLambda": 0.75,
+    "_csmOptimizationMode": 2,
+    "_csmAdvancedOptions": false,
+    "_csmLayersTransition": false,
+    "_csmTransitionRange": 0.05,
+    "_shadowFixedArea": false,
+    "_shadowNear": 0.1,
+    "_shadowFar": 10,
+    "_shadowOrthoSize": 5,
+    "_id": "356FQxq/VFKbTMx8Smo9ri"
+  },
+  {
+    "__type__": "cc.StaticLightSettings",
+    "_baked": false,
+    "_editorOnly": false,
+    "_castShadow": false
   },
   {
     "__type__": "cc.Camera",
@@ -2452,6 +2560,54 @@
     "bottomPaddingPixels": 62
   },
   {
+    "__type__": "PlayerColorTheme",
+    "player": {
+      "__type__": "cc.Color",
+      "r": 254,
+      "g": 255,
+      "b": 65,
+      "a": 255
+    },
+    "path": {
+      "__type__": "cc.Color",
+      "r": 254,
+      "g": 255,
+      "b": 0,
+      "a": 255
+    },
+    "trail": {
+      "__type__": "cc.Color",
+      "r": 243,
+      "g": 255,
+      "b": 104,
+      "a": 255
+    }
+  },
+  {
+    "__type__": "PlayerColorTheme",
+    "player": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 71,
+      "b": 229,
+      "a": 255
+    },
+    "path": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 31,
+      "b": 253,
+      "a": 255
+    },
+    "trail": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 98,
+      "b": 237,
+      "a": 255
+    }
+  },
+  {
     "__type__": "cc.PrefabInfo",
     "root": null,
     "asset": null,
@@ -2459,31 +2615,31 @@
     "instance": null,
     "targetOverrides": [
       {
-        "__id__": 150
+        "__id__": 155
       },
       {
-        "__id__": 152
+        "__id__": 157
       },
       {
-        "__id__": 154
+        "__id__": 159
       },
       {
-        "__id__": 156
+        "__id__": 161
       },
       {
-        "__id__": 158
+        "__id__": 163
       },
       {
-        "__id__": 160
+        "__id__": 165
       },
       {
-        "__id__": 162
+        "__id__": 167
       },
       {
-        "__id__": 164
+        "__id__": 169
       },
       {
-        "__id__": 166
+        "__id__": 171
       }
     ],
     "nestedPrefabInstanceRoots": [
@@ -2517,7 +2673,7 @@
       "__id__": 125
     },
     "targetInfo": {
-      "__id__": 151
+      "__id__": 156
     }
   },
   {
@@ -2539,7 +2695,7 @@
       "__id__": 125
     },
     "targetInfo": {
-      "__id__": 153
+      "__id__": 158
     }
   },
   {
@@ -2559,7 +2715,7 @@
     ],
     "target": null,
     "targetInfo": {
-      "__id__": 155
+      "__id__": 160
     }
   },
   {
@@ -2581,7 +2737,7 @@
       "__id__": 13
     },
     "targetInfo": {
-      "__id__": 157
+      "__id__": 162
     }
   },
   {
@@ -2603,7 +2759,7 @@
       "__id__": 13
     },
     "targetInfo": {
-      "__id__": 159
+      "__id__": 164
     }
   },
   {
@@ -2625,7 +2781,7 @@
       "__id__": 25
     },
     "targetInfo": {
-      "__id__": 161
+      "__id__": 166
     }
   },
   {
@@ -2647,7 +2803,7 @@
       "__id__": 25
     },
     "targetInfo": {
-      "__id__": 163
+      "__id__": 168
     }
   },
   {
@@ -2669,7 +2825,7 @@
       "__id__": 45
     },
     "targetInfo": {
-      "__id__": 165
+      "__id__": 170
     }
   },
   {
@@ -2684,7 +2840,7 @@
       "__id__": 45
     },
     "sourceInfo": {
-      "__id__": 167
+      "__id__": 172
     },
     "propertyPath": [
       "screen"
@@ -2693,7 +2849,7 @@
       "__id__": 45
     },
     "targetInfo": {
-      "__id__": 168
+      "__id__": 173
     }
   },
   {
@@ -2711,28 +2867,28 @@
   {
     "__type__": "cc.SceneGlobals",
     "ambient": {
-      "__id__": 170
-    },
-    "shadows": {
-      "__id__": 171
-    },
-    "_skybox": {
-      "__id__": 172
-    },
-    "fog": {
-      "__id__": 173
-    },
-    "octree": {
-      "__id__": 174
-    },
-    "skin": {
       "__id__": 175
     },
-    "lightProbeInfo": {
+    "shadows": {
       "__id__": 176
     },
-    "postSettings": {
+    "_skybox": {
       "__id__": 177
+    },
+    "fog": {
+      "__id__": 178
+    },
+    "octree": {
+      "__id__": 179
+    },
+    "skin": {
+      "__id__": 180
+    },
+    "lightProbeInfo": {
+      "__id__": 181
+    },
+    "postSettings": {
+      "__id__": 182
     },
     "bakedWithStationaryMainLight": false,
     "bakedWithHighpLightmap": false

@@ -205,9 +205,23 @@
     },
     "playerColor": {
       "__type__": "cc.Color",
-      "r": 239,
+      "r": 255,
       "g": 255,
-      "b": 8,
+      "b": 255,
+      "a": 255
+    },
+    "pathColor": {
+      "__type__": "cc.Color",
+      "r": 181,
+      "g": 206,
+      "b": 228,
+      "a": 255
+    },
+    "trailColor": {
+      "__type__": "cc.Color",
+      "r": 231,
+      "g": 245,
+      "b": 255,
       "a": 255
     },
     "maxLives": 3,

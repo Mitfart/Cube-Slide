@@ -582,10 +582,10 @@ export class GridController extends Component {
     }
 
     private applyMaterialColor(node: Node, color: Color): void {
-        const renderer = node.getComponent(MeshRenderer);
-        renderer?.getMaterialInstance(0)?.setProperty('mainColor', color);
-        for (const child of node.children) {
-            this.applyMaterialColor(child, color);
+        for (const renderer of node.getComponentsInChildren(MeshRenderer)) {
+            for (let i = 0; i < Math.max(1, renderer.materials.length); i++) {
+                renderer.getMaterialInstance(i)!.setProperty('mainColor', color);
+            }
         }
     }
 

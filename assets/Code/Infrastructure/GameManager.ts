@@ -27,6 +27,18 @@ class LevelViewConfig {
     public bottomPaddingPixels = 0;
 }
 
+@ccclass('PlayerColorTheme')
+class PlayerColorTheme {
+    @property(Color)
+    public player = new Color(110, 202, 58, 255);
+
+    @property(Color)
+    public path = new Color(181, 206, 228, 255);
+
+    @property(Color)
+    public trail = new Color(231, 245, 255, 255);
+}
+
 @ccclass('GameManager')
 export class GameManager extends Component {
     @property(GridController)
@@ -64,6 +76,9 @@ export class GameManager extends Component {
 
     @property([LevelViewConfig])
     public levelViews: LevelViewConfig[] = [];
+
+    @property([PlayerColorTheme])
+    public playerColorThemes: PlayerColorTheme[] = [new PlayerColorTheme()];
 
     private player: Node | null = null;
     private readonly enemies: EnemyController[] = [];
@@ -199,21 +214,21 @@ export class GameManager extends Component {
         }
         playerController.onGameEnd = () => this.endGame();
         playerController.minimumDragDistance = this.minimumDragDistance;
-        const playerColor = this.parseColor(level.playerColor);
-        if (playerColor) playerController.playerColor = playerColor;
+        this.applyPlayerColors(playerController, level);
         playerController.setGrid(this.grid);
         this.uiManager?.setupLives(playerController.maxLives);
     }
 
-    private parseColor(hex: string | undefined): Color | null {
-        if (!hex) return null;
-        const match = /^#?([0-9a-f]{6})$/i.exec(hex);
-        if (!match) {
-            console.error('[GameManager] Invalid playerColor');
-            return null;
+    private applyPlayerColors(player: PlayerController, level: LevelConfig): void {
+        const theme = this.playerColorThemes[level.playerThemeIndex ?? 0];
+        if (!theme) {
+            console.error('[GameManager] Missing playerColorThemes index');
+            return;
         }
-        const value = Number.parseInt(match[1], 16);
-        return new Color((value >> 16) & 255, (value >> 8) & 255, value & 255, 255);
+
+        player.playerColor = theme.player.clone();
+        player.pathColor = theme.path.clone();
+        player.trailColor = theme.trail.clone();
     }
 
     private spawnLevelViews(levels: LevelConfig[]): void {
