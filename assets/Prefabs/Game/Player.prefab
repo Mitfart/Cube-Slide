@@ -20,16 +20,19 @@
     "_children": [
       {
         "__id__": 2
+      },
+      {
+        "__id__": 6
       }
     ],
     "_active": true,
     "_components": [
       {
-        "__id__": 7
+        "__id__": 11
       }
     ],
     "_prefab": {
-      "__id__": 9
+      "__id__": 13
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -62,7 +65,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "View",
+    "_name": "View_Sprite",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -76,7 +79,111 @@
       }
     ],
     "_prefab": {
-      "__id__": 6
+      "__id__": 5
+    },
+    "_lpos": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 1.1,
+      "z": 0
+    },
+    "_lrot": {
+      "__type__": "cc.Quat",
+      "x": -0.7071067811865475,
+      "y": 0,
+      "z": 0,
+      "w": 0.7071067811865476
+    },
+    "_lscale": {
+      "__type__": "cc.Vec3",
+      "x": 2.5,
+      "y": 2.5,
+      "z": 2.5
+    },
+    "_mobility": 0,
+    "_layer": 1073741824,
+    "_euler": {
+      "__type__": "cc.Vec3",
+      "x": -90,
+      "y": 0,
+      "z": 0
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.SpriteRenderer",
+    "_name": "",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "node": {
+      "__id__": 2
+    },
+    "_enabled": true,
+    "__prefab": {
+      "__id__": 4
+    },
+    "_materials": [
+      {
+        "__uuid__": "ade8a15a-dcca-4b3c-84c6-f6476ac875bb",
+        "__expectedType__": "cc.Material"
+      }
+    ],
+    "_visFlags": 0,
+    "_spriteFrame": {
+      "__uuid__": "d9d08de9-614a-4276-8db3-795528bb7764@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
+    "_mode": 0,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_flipX": false,
+    "_flipY": false,
+    "_size": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.CompPrefabInfo",
+    "fileId": "335FYAbrRFKINuDBwuuSai"
+  },
+  {
+    "__type__": "cc.PrefabInfo",
+    "root": {
+      "__id__": 1
+    },
+    "asset": {
+      "__id__": 0
+    },
+    "fileId": "eeg5l4V7tBrIBDvwwODVoK",
+    "instance": null,
+    "targetOverrides": null,
+    "nestedPrefabInstanceRoots": null
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "View",
+    "_objFlags": 0,
+    "__editorExtras__": {},
+    "_parent": {
+      "__id__": 1
+    },
+    "_children": [],
+    "_active": false,
+    "_components": [
+      {
+        "__id__": 7
+      }
+    ],
+    "_prefab": {
+      "__id__": 10
     },
     "_lpos": {
       "__type__": "cc.Vec3",
@@ -113,11 +220,11 @@
     "_objFlags": 0,
     "__editorExtras__": {},
     "node": {
-      "__id__": 2
+      "__id__": 6
     },
     "_enabled": true,
     "__prefab": {
-      "__id__": 4
+      "__id__": 8
     },
     "_materials": [
       {
@@ -127,7 +234,7 @@
     ],
     "_visFlags": 0,
     "bakeSettings": {
-      "__id__": 5
+      "__id__": 9
     },
     "_mesh": {
       "__uuid__": "1263d74c-8167-4928-91a6-4e2672411f47@a804a",
@@ -191,7 +298,7 @@
     },
     "_enabled": true,
     "__prefab": {
-      "__id__": 8
+      "__id__": 12
     },
     "grid": null,
     "cellsPerSecond": 10,
@@ -209,6 +316,9 @@
       "g": 255,
       "b": 255,
       "a": 255
+    },
+    "playerSpriteRenderer": {
+      "__id__": 3
     },
     "pathColor": {
       "__type__": "cc.Color",

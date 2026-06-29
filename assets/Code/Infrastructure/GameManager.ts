@@ -1,4 +1,4 @@
-import { _decorator, Button, Camera, Color, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, SpriteRenderer, Vec2, Vec3, view } from 'cc';
+import { _decorator, Button, Camera, Color, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, SpriteFrame, SpriteRenderer, Vec2, Vec3, view } from 'cc';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
 import { GridController } from './GridController';
 import { EnemyController } from '../Enemy/EnemyController';
@@ -31,6 +31,9 @@ class LevelViewConfig {
 class PlayerColorTheme {
     @property(Color)
     public player = new Color(110, 202, 58, 255);
+
+    @property(SpriteFrame)
+    public spriteFrame: SpriteFrame | null = null;
 
     @property(Color)
     public path = new Color(181, 206, 228, 255);
@@ -214,12 +217,12 @@ export class GameManager extends Component {
         }
         playerController.onGameEnd = () => this.endGame();
         playerController.minimumDragDistance = this.minimumDragDistance;
-        this.applyPlayerColors(playerController, level);
+        this.applyPlayerTheme(playerController, level);
         playerController.setGrid(this.grid);
         this.uiManager?.setupLives(playerController.maxLives);
     }
 
-    private applyPlayerColors(player: PlayerController, level: LevelConfig): void {
+    private applyPlayerTheme(player: PlayerController, level: LevelConfig): void {
         const theme = this.playerColorThemes[level.playerThemeIndex ?? 0];
         if (!theme) {
             console.error('[GameManager] Missing playerColorThemes index');
@@ -227,6 +230,7 @@ export class GameManager extends Component {
         }
 
         player.playerColor = theme.player.clone();
+        player.playerSpriteFrame = theme.spriteFrame;
         player.pathColor = theme.path.clone();
         player.trailColor = theme.trail.clone();
     }

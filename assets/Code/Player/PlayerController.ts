@@ -1,4 +1,4 @@
-import { _decorator, Color, Component, input, Input, EventTouch, MeshRenderer, Prefab, Vec2, Vec3, tween, Tween, Node } from 'cc';
+import { _decorator, Color, Component, input, Input, EventTouch, MeshRenderer, Prefab, SpriteFrame, SpriteRenderer, Vec2, Vec3, tween, Tween, Node } from 'cc';
 import { applyToonColor } from '../Infrastructure/Services/ToonColors';
 import { GridController } from '../Infrastructure/GridController';
 const { ccclass, property } = _decorator;
@@ -19,6 +19,11 @@ export class PlayerController extends Component {
 
     @property(Color)
     public playerColor = new Color(110, 202, 58, 255);
+
+    @property(SpriteRenderer)
+    public playerSpriteRenderer: SpriteRenderer | null = null;
+
+    public playerSpriteFrame: SpriteFrame | null = null;
 
     @property(Color)
     public pathColor = new Color(181, 206, 228, 255);
@@ -77,6 +82,7 @@ export class PlayerController extends Component {
         this.grid = grid;
         this.currentLives = this.maxLives;
         this.applyMaterialColor(this.node, this.playerColor);
+        this.applyPlayerSpriteFrame();
         this.fillSpawnCell();
     }
 
@@ -105,6 +111,7 @@ export class PlayerController extends Component {
         this.hasTrail = false;
         this.node.active = true;
         this.inputLocked = false;
+        this.applyPlayerSpriteFrame();
         this.fillSpawnCell();
     }
 
@@ -315,6 +322,19 @@ export class PlayerController extends Component {
                 applyToonColor(renderer.getMaterialInstance(i)!, color);
             }
         }
+    }
+
+    private applyPlayerSpriteFrame(): void {
+        if (!this.playerSpriteRenderer) {
+            console.error('[PlayerController] Missing playerSpriteRenderer');
+            return;
+        }
+        if (!this.playerSpriteFrame) {
+            console.error('[PlayerController] Missing playerSpriteFrame');
+            return;
+        }
+
+        this.playerSpriteRenderer.spriteFrame = this.playerSpriteFrame;
     }
 
     private hasRequiredFields(): boolean {

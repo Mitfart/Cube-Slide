@@ -3039,6 +3039,10 @@
       "b": 65,
       "a": 255
     },
+    "spriteFrame": {
+      "__uuid__": "d9d08de9-614a-4276-8db3-795528bb7764@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
     "path": {
       "__type__": "cc.Color",
       "r": 254,
@@ -3062,6 +3066,10 @@
       "g": 71,
       "b": 229,
       "a": 255
+    },
+    "spriteFrame": {
+      "__uuid__": "71d5b580-0493-45a4-b2d4-8faaa0b36d11@f9941",
+      "__expectedType__": "cc.SpriteFrame"
     },
     "path": {
       "__type__": "cc.Color",
