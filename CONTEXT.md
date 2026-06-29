@@ -12,7 +12,10 @@
 - **Wall Shadow** — spawned only where an offset wall shadow overlaps non-wall tiles, so shadows stick out onto floor/lock tiles only.
 - **Game Manager** — composition root that builds selected levels, spawns player/enemies, owns win/fail flow, coin collection hooks, camera follow/zoom, and UI progress.
 - **Enemy Shape** — static `number[][]` mask in `EnemyShapes.ts`; enemy visuals are instantiated from one serialized prefab per occupied cell.
+- **Enemy Controller** — moving enemy component that patrols between grid cells, reports occupied cells for player hits, and destroys/fills touched cells when overlapped by filled paint.
 - **Player Controller** — swipe-driven grid mover on the player prefab. Runtime-injected grid ref is hidden from inspector. A swipe slides smoothly until blocked; mid-slide swipe finishes the current cell using a small snap-back threshold, then starts the new direction.
+- **Choose Level UI** — card-based selector/result overlay that calls `GameManager.buildLevel(level)` and records win/fail card state.
+- **Toon Color** — helper-applied material color set (`baseColor`, `mainColor`, `shadeColor1`, `shadeColor2`) used by player/enemy/fill visuals.
 
 ## Working implementation notes
 
@@ -24,4 +27,7 @@
 - Camera keeps scene rotation/Y height. During tunnel travel, camera position, Z offset, and ortho zoom ease between neighboring level configs; outside tunnels it stays on the nearest level center.
 - Player prefab must have `PlayerController` directly. `GameManager` only injects `GridController`; it does not add gameplay components at runtime. Swipes choose grid directions; movement tween goes to the final wall-stop target for smooth sliding. Mid-slide direction changes finish the current cell first, with snap-back before 25% cell progress.
 - Grid/touch logic has one source of truth: convert only local X/Z positions through `GridController`, keep keys as `"x,z"` strings, and use `GridController.getTouchedCells()` for player/enemy overlap. Recent bugs came from mixing raw cells, parsed keys, local positions, and enemy offsets in separate code paths.
+- Enemy visuals use per-level color maps in `EnemyShapes.ts`; material tinting goes through `applyToonColor()` so base and shade colors stay consistent.
+- `SoundManager` centralizes music/SFX playback and unlocks audio from the first pointer event. Gameplay callers pass positions; missing clips are logged once.
+- `Analytics.emit()` deduplicates emitted event names for simple playable-style milestones.
 - Removed stale gameplay data: `TileType`, `EMPTY_LEVEL`, unused enemy color table, unused `PrefabBurst`, and unused UI confetti code. Current tile state is held in `GridController` sets/maps.

@@ -1,4 +1,5 @@
 import { _decorator, Color, Component, instantiate, MeshRenderer, Node, Prefab, Vec2, Vec3, tween } from 'cc';
+import { applyToonColor } from './Services/ToonColors';
 import { LevelConfig } from '../Gameplay/Levels';
 import { SoundManager } from './Services/SoundManager';
 const { ccclass, property } = _decorator;
@@ -225,6 +226,14 @@ export class GridController extends Component {
         return this.filledTiles.has(key) || this.fillNodes.has(key);
     }
 
+    public isFillSpawnedGrid(x: number, z: number): boolean {
+        return this.filledTiles.has(this.key(x, z));
+    }
+
+    public isLevelFloorGrid(x: number, z: number): boolean {
+        return this.fillableTiles.has(this.key(x, z));
+    }
+
     public isEmptyFloorGrid(x: number, z: number): boolean {
         const key = this.key(x, z);
         return this.fillableTiles.has(key) && !this.filledTiles.has(key) && !this.fillNodes.has(key) && !this.trailNodes.has(key);
@@ -390,7 +399,7 @@ export class GridController extends Component {
         }
         for (const key of keys) {
             const [x, z] = this.parseTile(key);
-            this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04, false, color);
+            this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04, false, color, true);
         }
     }
 
@@ -554,37 +563,50 @@ export class GridController extends Component {
         return tile;
     }
 
-    private setFilled(x: number, z: number, prefab: Prefab, animate: boolean, delay = 0, force = false, color?: Color): void {
+    private setFilled(x: number, z: number, prefab: Prefab, animate: boolean, delay = 0, force = false, color?: Color, delaySpawn = false): void {
         const key = this.key(x, z);
         if ((!force && !this.fillableTiles.has(key)) || this.fillNodes.has(key)) {
             return;
         }
 
-        const trail = this.trailNodes.get(key);
-        if (trail) {
-            trail.destroy();
-            this.trailNodes.delete(key);
-        }
+        const spawn = (): void => {
+            if (this.fillNodes.has(key)) {
+                return;
+            }
 
-        const fill = this.spawnPrefab(prefab, x, z);
-        if (color) this.applyMaterialColor(fill, color);
-        this.fillNodes.set(key, fill);
-        if (animate) {
-            this.playFillSpawn(fill, delay, () => {
-                this.filledTiles.add(key);
-                this.collectCoinKey(key);
-            });
+            const trail = this.trailNodes.get(key);
+            if (trail) {
+                trail.destroy();
+                this.trailNodes.delete(key);
+            }
+
+            const fill = this.spawnPrefab(prefab, x, z);
+            if (color) this.applyMaterialColor(fill, color);
+            this.fillNodes.set(key, fill);
+            if (animate) {
+                this.playFillSpawn(fill, delaySpawn ? 0 : delay, () => {
+                    this.filledTiles.add(key);
+                    this.collectCoinKey(key);
+                });
+                return;
+            }
+
+            this.filledTiles.add(key);
+            this.collectCoinKey(key);
+        };
+
+        if (delaySpawn && delay > 0) {
+            this.scheduleOnce(spawn, delay);
             return;
         }
 
-        this.filledTiles.add(key);
-        this.collectCoinKey(key);
+        spawn();
     }
 
     private applyMaterialColor(node: Node, color: Color): void {
         for (const renderer of node.getComponentsInChildren(MeshRenderer)) {
             for (let i = 0; i < Math.max(1, renderer.materials.length); i++) {
-                renderer.getMaterialInstance(i)!.setProperty('mainColor', color);
+                applyToonColor(renderer.getMaterialInstance(i)!, color);
             }
         }
     }
@@ -684,7 +706,7 @@ export class GridController extends Component {
         }
         for (const key of inner) {
             const [x, z] = this.parseTile(key);
-            this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04, false, color);
+            this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04, false, color, true);
         }
     }
 

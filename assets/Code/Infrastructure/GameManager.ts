@@ -273,7 +273,7 @@ export class GameManager extends Component {
 
             const scale = this.getLevelWidth(levels[i]) / (contentWidthPixels / 100);
             const bottomOffset = (spriteHeight / 2 - config.bottomPaddingPixels) / 100 * scale;
-            node.setPosition(center.x, center.y, this.getLevelBottom(levels[i], center) - bottomOffset + 0.5);
+            node.setPosition(this.getLevelViewX(levels[i], center), center.y, this.getLevelBottom(levels[i], center) - bottomOffset + 0.5);
             node.setScale(scale, scale, scale);
             this.spawnedLevelViews.push(node);
         }
@@ -288,6 +288,11 @@ export class GameManager extends Component {
 
     private getLevelWidth(level: LevelConfig): number {
         return level.rows.reduce((width, row) => Math.max(width, row.replace(/#/g, '').length), 0);
+    }
+
+    private getLevelViewX(level: LevelConfig, center: Vec3): number {
+        const rowWidth = level.rows.reduce((width, row) => Math.max(width, row.length), 0);
+        return center.x - (rowWidth % 2 === 0 ? 0.5 : 0);
     }
 
     private getLevelBottom(level: LevelConfig, center: Vec3): number {

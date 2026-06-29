@@ -65,7 +65,9 @@ export class UI_ChooseLevelController extends Component {
         for (const card of this.getCards()) {
             card?.normalize();
         }
+        this.updateCardsLayout();
         this.screen?.show(() => { 
+            this.updateCardsLayout();
             this.updateResultCards(true); 
             onComplete?.(); 
         });
@@ -107,53 +109,59 @@ export class UI_ChooseLevelController extends Component {
         const spacingY = gridLayout.spacingY;
         let columns = 1;
         let rows = count;
-        let cell = 0;
+        let cardHeight = 0;
+        const cardAspect = this.getCardAspect();
         const constraint = gridLayout.constraint;
         const constraintNum = Math.max(1, gridLayout.constraintNum);
+        const getCardHeight = (columnCount: number, rowCount: number): number => Math.min(
+            (containerWidth - spacingX * (columnCount - 1)) / columnCount / cardAspect,
+            (containerHeight - spacingY * (rowCount - 1)) / rowCount,
+        );
 
         if (constraint === Layout.Constraint.FIXED_COL) {
             columns = Math.min(count, constraintNum);
             rows = Math.ceil(count / columns);
-            cell = Math.min(
-                (containerWidth - spacingX * (columns - 1)) / columns,
-                (containerHeight - spacingY * (rows - 1)) / rows,
-            );
+            cardHeight = getCardHeight(columns, rows);
         } else if (constraint === Layout.Constraint.FIXED_ROW) {
             rows = Math.min(count, constraintNum);
             columns = Math.ceil(count / rows);
-            cell = Math.min(
-                (containerWidth - spacingX * (columns - 1)) / columns,
-                (containerHeight - spacingY * (rows - 1)) / rows,
-            );
+            cardHeight = getCardHeight(columns, rows);
         } else {
             for (let candidateColumns = 1; candidateColumns <= count; candidateColumns++) {
                 const candidateRows = Math.ceil(count / candidateColumns);
-                const availableWidth = containerWidth - spacingX * (candidateColumns - 1);
-                const availableHeight = containerHeight - spacingY * (candidateRows - 1);
-                const candidateCell = Math.min(availableWidth / candidateColumns, availableHeight / candidateRows);
+                const candidateCardHeight = getCardHeight(candidateColumns, candidateRows);
 
-                if (candidateCell > cell) {
+                if (candidateCardHeight > cardHeight) {
                     columns = candidateColumns;
                     rows = candidateRows;
-                    cell = candidateCell;
+                    cardHeight = candidateCardHeight;
                 }
             }
         }
 
-        cell = Math.max(0, cell);
-        const usedWidth = columns * cell + spacingX * (columns - 1);
-        const usedHeight = rows * cell + spacingY * (rows - 1);
+        cardHeight = Math.max(0, cardHeight);
+        const cardWidth = cardHeight * cardAspect;
+        const usedWidth = columns * cardWidth + spacingX * (columns - 1);
+        const usedHeight = rows * cardHeight + spacingY * (rows - 1);
 
         gridLayout.type = Layout.Type.GRID;
         gridLayout.resizeMode = Layout.ResizeMode.CHILDREN;
         gridLayout.constraint = constraint === Layout.Constraint.FIXED_ROW ? Layout.Constraint.FIXED_ROW : Layout.Constraint.FIXED_COL;
         gridLayout.constraintNum = constraint === Layout.Constraint.FIXED_ROW ? rows : columns;
-        gridLayout.cellSize = new Size(cell, cell);
+        gridLayout.cellSize = new Size(cardWidth, cardHeight);
         gridLayout.paddingLeft = (containerWidth - usedWidth) * 0.5;
         gridLayout.paddingRight = gridLayout.paddingLeft;
         gridLayout.paddingTop = (containerHeight - usedHeight) * 0.5;
         gridLayout.paddingBottom = gridLayout.paddingTop;
         gridLayout.updateLayout(true);
+    }
+
+    private getCardAspect(): number {
+        const card = this.getCards().find(Boolean);
+        const size = card?.node.getComponent(UITransform)?.contentSize;
+        if (!size || size.height <= 0) return 1;
+
+        return size.width / size.height;
     }
 
     private updateResultCards(animated: boolean): void {

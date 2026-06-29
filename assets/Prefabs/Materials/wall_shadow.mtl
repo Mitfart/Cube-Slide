@@ -5,11 +5,20 @@
   "__editorExtras__": {},
   "_native": "",
   "_effectAsset": {
-    "__uuid__": "a3cd009f-0ab0-420d-9278-b9fdab939bbc",
+    "__uuid__": "9b20a514-6cc3-49de-b216-b6b863046249",
     "__expectedType__": "cc.EffectAsset"
   },
-  "_techIdx": 3,
+  "_techIdx": 0,
   "_defines": [
+    {
+      "USE_INSTANCING": true
+    },
+    {
+      "USE_INSTANCING": true
+    },
+    {},
+    {},
+    {},
     {},
     {}
   ],
@@ -31,11 +40,57 @@
           {}
         ]
       }
+    },
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
+    },
+    {
+      "rasterizerState": {},
+      "depthStencilState": {},
+      "blendState": {
+        "targets": [
+          {}
+        ]
+      }
     }
   ],
   "_props": [
     {
-      "mainColor": {
+      "lineWidth": 0,
+      "baseColor": {
         "__type__": "cc.Color",
         "r": 40,
         "g": 55,
@@ -43,6 +98,40 @@
         "a": 75
       }
     },
+    {
+      "mainColor": {
+        "__type__": "cc.Color",
+        "r": 40,
+        "g": 55,
+        "b": 94,
+        "a": 75
+      },
+      "shadeColor1": {
+        "__type__": "cc.Color",
+        "r": 22,
+        "g": 36,
+        "b": 86,
+        "a": 75
+      },
+      "shadeColor2": {
+        "__type__": "cc.Color",
+        "r": 6,
+        "g": 20,
+        "b": 79,
+        "a": 75
+      },
+      "specular": {
+        "__type__": "cc.Color",
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0
+      }
+    },
+    {},
+    {},
+    {},
+    {},
     {}
   ]
 }

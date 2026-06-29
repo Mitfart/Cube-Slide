@@ -1,4 +1,5 @@
 import { _decorator, Color, Component, input, Input, EventTouch, MeshRenderer, Prefab, Vec2, Vec3, tween, Tween, Node } from 'cc';
+import { applyToonColor } from '../Infrastructure/Services/ToonColors';
 import { GridController } from '../Infrastructure/GridController';
 const { ccclass, property } = _decorator;
 
@@ -311,7 +312,7 @@ export class PlayerController extends Component {
     private applyMaterialColor(node: Node, color: Color): void {
         for (const renderer of node.getComponentsInChildren(MeshRenderer)) {
             for (let i = 0; i < Math.max(1, renderer.materials.length); i++) {
-                renderer.getMaterialInstance(i)!.setProperty('mainColor', color);
+                applyToonColor(renderer.getMaterialInstance(i)!, color);
             }
         }
     }

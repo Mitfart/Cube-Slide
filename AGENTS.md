@@ -3,6 +3,7 @@
 - DOX is the AGENTS.md hierarchy for this repo.
 - AGENTS.md files are binding work contracts for their subtrees.
 - Before editing, read this file, then every child AGENTS.md on the path to the target.
+- After meaningful changes, update the nearest AGENTS.md if purpose, structure, workflow, rules, or durable behavior changed.
 - Keep docs concise and operational; delete stale rules instead of explaining history.
 
 ## Project

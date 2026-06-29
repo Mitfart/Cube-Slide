@@ -1,6 +1,7 @@
 import { _decorator, Color, Component, GradientRange, Material, MeshRenderer, Node, ParticleSystem, Prefab, Vec2, Vec3, instantiate, tween } from 'cc';
 import { GridController } from '../Infrastructure/GridController';
 import { SoundManager } from '../Infrastructure/Services/SoundManager';
+import { applyToonColor } from '../Infrastructure/Services/ToonColors';
 const { ccclass, property } = _decorator;
 type EnemyCell = [number, number, Node];
 
@@ -23,6 +24,7 @@ export class EnemyController extends Component {
 
     private readonly cells: EnemyCell[] = [];
     private readonly materialsByColor = new Map<string, Material>();
+    private readonly colorsByNode = new Map<Node, Color>();
     private startPos = new Vec2();
     private endPos = new Vec2();
     private goingToEnd = true;
@@ -97,15 +99,17 @@ export class EnemyController extends Component {
             return;
         }
 
+        const color = new Color().fromHEX(hex);
         let material = this.materialsByColor.get(hex);
         if (!material) {
             material = new Material();
             material.copy(base);
-            material.setProperty('mainColor', new Color().fromHEX(hex));
+            applyToonColor(material, color);
             this.materialsByColor.set(hex, material);
         }
 
         renderer.setSharedMaterial(material, 0);
+        this.colorsByNode.set(node, color);
     }
 
     private moveNext(): void {
@@ -120,16 +124,37 @@ export class EnemyController extends Component {
         }
 
         const goal = this.goingToEnd ? this.endPos : this.startPos;
-        const target = this.grid.gridToLocal(goal.x, goal.y);
-        const distance = Vec3.distance(this.node.position, target);
+        const next = this.getNextCell(current, goal);
+        if (!this.canOccupy(next)) {
+            this.goingToEnd = !this.goingToEnd;
+            this.scheduleOnce(() => this.moveNext(), 0);
+            return;
+        }
+
+        const target = this.grid.gridToLocal(next.x, next.y);
         tween(this.node)
-            .to(distance / this.cellsPerSecond, { position: target }, { easing: 'quadInOut' })
+            .to(1 / this.cellsPerSecond, { position: target }, { easing: 'linear' })
             .call(() => {
                 this.node.setPosition(target);
-                this.goingToEnd = !this.goingToEnd;
                 this.moveNext();
             })
             .start();
+    }
+
+    private getNextCell(current: Vec2, goal: Vec2): Vec2 {
+        const dx = Math.sign(goal.x - current.x);
+        const dz = Math.sign(goal.y - current.y);
+        return Math.abs(goal.x - current.x) > 0
+            ? new Vec2(current.x + dx, current.y)
+            : new Vec2(current.x, current.y + dz);
+    }
+
+    private canOccupy(cell: Vec2): boolean {
+        if (!this.grid) {
+            return false;
+        }
+
+        return this.cells.every(enemyCell => this.grid!.isLevelFloorGrid(cell.x + enemyCell[0], cell.y + enemyCell[1]));
     }
 
     private sameCell(a: Vec2, b: Vec2): boolean {
@@ -146,7 +171,7 @@ export class EnemyController extends Component {
         for (let i = this.cells.length - 1; i >= 0; i--) {
             const cell = this.cells[i];
             const touched = this.getTouchedCells(cell);
-            const hitCell = touched.find(gridCell => this.grid!.isFilledGrid(gridCell.x, gridCell.y));
+            const hitCell = touched.find(gridCell => this.grid!.isFillSpawnedGrid(gridCell.x, gridCell.y));
             if (!hitCell) continue;
             const delay = Math.random() * 0.12;
             if (!this.hasNearbyBurst(hitCell, burstCells)) {
@@ -193,7 +218,7 @@ export class EnemyController extends Component {
 
         const start = node.worldPosition.clone();
         start.y += 0.45;
-        const sourceColor = node.getComponentInChildren(MeshRenderer)?.getSharedMaterial(0)?.getProperty('mainColor') as Color | null;
+        const sourceColor = this.colorsByNode.get(node);
         this.scheduleOnce(() => {
             const effect = instantiate(this.destroyParticlePrefab!);
             effect.setParent(this.node.parent);

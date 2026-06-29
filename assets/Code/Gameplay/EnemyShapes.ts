@@ -40,9 +40,9 @@ export const LEVEL_ENEMY_COLORS = {
     10: '#2e43bb', // BLUE
     2: '#2d365e', // D-BLUE 
     3: '#c9211c', // R
-    5: '#a53748', // DP
-    6: '#e05d75', // P
-    11: '#fd99bf', // LP
+    5: '#721e2b', // DP
+    6: '#b74052', // P
+    11: '#ff6c8f', // LP
     12: '#ffffff', // W
 };
 
