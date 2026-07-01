@@ -23,6 +23,8 @@ export class UI_ChooseLevelController extends Component {
 
     private readonly levelResults: (boolean | null)[] = [];
     private gameManager: { buildLevel(level: LevelConfig): void } | null = null;
+    private guideLoopActive = false;
+    private guideIndex = 0;
 
     protected onLoad(): void {
         this.setLayerRecursively(this.node, Layers.Enum.UI_2D);
@@ -52,6 +54,8 @@ export class UI_ChooseLevelController extends Component {
     }
 
     protected onDisable(): void {
+        this.stopGuideLoop();
+
         for (const card of this.getCards()) {
             card?.deinitialize();
         }
@@ -68,12 +72,14 @@ export class UI_ChooseLevelController extends Component {
         this.updateCardsLayout();
         this.screen?.show(() => { 
             this.updateCardsLayout();
-            this.updateResultCards(true); 
+            this.updateResultCards(true);
+            this.startGuideLoop();
             onComplete?.(); 
         });
     }
 
     public hide(onComplete: () => void = null): void {
+        this.stopGuideLoop();
         this.screen?.hide(false, onComplete);
     }
 
@@ -82,8 +88,9 @@ export class UI_ChooseLevelController extends Component {
     }
 
     public blockInput() {
+        this.stopGuideLoop();
         this.getCards().forEach(card => {
-            card.block();
+            card?.block();
         });
     }
 
@@ -190,6 +197,47 @@ export class UI_ChooseLevelController extends Component {
 
     private getCards(): (UI_ChooseLevelCard | null)[] {
         return this.levelCards;
+    }
+
+    private startGuideLoop(): void {
+        this.stopGuideLoop();
+        this.guideLoopActive = true;
+        this.guideIndex = this.getNextGuideIndex(1);
+        this.playNextGuideLight();
+    }
+
+    private stopGuideLoop(): void {
+        this.guideLoopActive = false;
+        for (const card of this.getCards()) {
+            card?.hideGuideLight();
+        }
+    }
+
+    private playNextGuideLight(): void {
+        if (!this.guideLoopActive) return;
+
+        const cards = this.getCards();
+        if (cards.length === 0) return;
+
+        const index = this.getNextGuideIndex(this.guideIndex);
+        if (index < 0) return;
+
+        const card = cards[index];
+        if (!card) return;
+
+        this.guideIndex = (index + 1) % cards.length;
+        const started = card.playGuideLight(() => this.playNextGuideLight());
+        if (!started) this.guideLoopActive = false;
+    }
+
+    private getNextGuideIndex(startIndex: number): number {
+        const cards = this.getCards();
+        for (let offset = 0; offset < cards.length; offset++) {
+            const index = (startIndex + offset) % cards.length;
+            if (cards[index] && (this.levelResults[index] === null || this.levelResults[index] === undefined)) return index;
+        }
+
+        return -1;
     }
 
     private chooseLevel(index: number): void {

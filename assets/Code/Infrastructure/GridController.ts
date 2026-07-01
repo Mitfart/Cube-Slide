@@ -21,6 +21,9 @@ export class GridController extends Component {
     public levelWall: Prefab | null = null;
 
     @property(Prefab)
+    public levelInnerWall: Prefab | null = null;
+
+    @property(Prefab)
     public levelWallShadow: Prefab | null = null;
 
     @property(Vec2)
@@ -64,6 +67,7 @@ export class GridController extends Component {
         this.clearLevel();
 
         const tiles = new Map<string, string>();
+        const innerWalls = new Set<string>();
         let nextBottomZ = 0;
         let previousTunnelStartZ = 0;
         for (let i = 0; i < levels.length; i++) {
@@ -73,7 +77,7 @@ export class GridController extends Component {
             const fillable = new Set<string>();
             const boundary = new Set<string>();
             const levelTiles = new Set<string>();
-            const bounds = this.addRows(tiles, level.rows, level.tunnelLength, zOffset, i > 0, fillable, boundary, levelTiles);
+            const bounds = this.addRows(tiles, level.rows, level.tunnelLength, zOffset, i > 0, fillable, boundary, levelTiles, innerWalls);
             this.spawnCoins(level, zOffset);
             this.levelFillableTiles.push(fillable);
             this.levelProgressIgnoredTiles.push(new Set<string>());
@@ -90,7 +94,7 @@ export class GridController extends Component {
             nextBottomZ = bounds.tunnelMinZ - 1;
         }
 
-        this.spawnMergedWalls(tiles);
+        this.spawnMergedWalls(tiles, innerWalls);
         for (const [key, symbol] of tiles) {
             if (symbol !== '#') {
                 const [x, z] = this.parseTile(key);
@@ -403,7 +407,7 @@ export class GridController extends Component {
         }
     }
 
-    private addRows(tiles: Map<string, string>, rows: string[], tunnelLength: number, zOffset: number, openBottom: boolean, fillable: Set<string>, boundary: Set<string>, levelTiles: Set<string>): { tunnelMinZ: number; tunnelStartZ: number } {
+    private addRows(tiles: Map<string, string>, rows: string[], tunnelLength: number, zOffset: number, openBottom: boolean, fillable: Set<string>, boundary: Set<string>, levelTiles: Set<string>, innerWalls: Set<string>): { tunnelMinZ: number; tunnelStartZ: number } {
         const bounds = this.getLevelBounds(rows, tunnelLength);
         const offsetX = bounds.offsetX;
         const offsetZ = bounds.offsetZ + zOffset;
@@ -417,6 +421,9 @@ export class GridController extends Component {
                 levelTiles.add(key);
                 if (row[x] === '#' && y !== 0) {
                     boundary.add(key);
+                }
+                if (symbol === '#' && x > 0 && x < row.length - 1 && y > 0 && y < rows.length - 1) {
+                    innerWalls.add(key);
                 }
                 if (symbol !== '#' && row[x] !== '#') {
                     this.fillableTiles.add(key);
@@ -473,9 +480,12 @@ export class GridController extends Component {
             .start();
     }
 
-    private spawnMergedWalls(tiles: Map<string, string>): void {
-        const walls = new Set([...tiles].filter(([, symbol]) => symbol === '#').map(([key]) => key));
+    private spawnMergedWalls(tiles: Map<string, string>, innerWalls: Set<string>): void {
+        this.spawnWallGroup(new Set([...tiles].filter(([key, symbol]) => symbol === '#' && !innerWalls.has(key)).map(([key]) => key)), this.levelWall, tiles);
+        this.spawnWallGroup(new Set(innerWalls), this.levelInnerWall, tiles);
+    }
 
+    private spawnWallGroup(walls: Set<string>, prefab: Prefab | null, tiles: Map<string, string>): void {
         for (const key of [...walls]) {
             if (!walls.has(key)) continue;
 
@@ -485,7 +495,7 @@ export class GridController extends Component {
             const depth = this.countRun(walls, x, z, 0, 1);
             if (depth <= 1) continue;
 
-            this.spawnWallRun(x, z, 1, depth, tiles);
+            this.spawnWallRun(x, z, 1, depth, prefab, tiles);
             this.deleteRun(walls, x, z, 0, 1, depth);
         }
 
@@ -496,7 +506,7 @@ export class GridController extends Component {
             if (walls.has(this.key(x - 1, z))) continue;
 
             const width = this.countRun(walls, x, z, 1, 0);
-            this.spawnWallRun(x, z, width, 1, tiles);
+            this.spawnWallRun(x, z, width, 1, prefab, tiles);
             this.deleteRun(walls, x, z, 1, 0, width);
         }
     }
@@ -515,10 +525,10 @@ export class GridController extends Component {
         }
     }
 
-    private spawnWallRun(x: number, z: number, width: number, depth: number, tiles: Map<string, string>): void {
+    private spawnWallRun(x: number, z: number, width: number, depth: number, prefab: Prefab | null, tiles: Map<string, string>): void {
         const centerX = x + (width - 1) / 2;
         const centerZ = z + (depth - 1) / 2;
-        this.spawnScaled(this.levelWall, centerX, centerZ, width, depth);
+        this.spawnScaled(prefab, centerX, centerZ, width, depth);
         this.spawnShadow(centerX, centerZ, width, depth, tiles);
     }
 
@@ -862,6 +872,10 @@ export class GridController extends Component {
         }
         if (!this.levelWall) {
             console.error('[GridController] Missing levelWall');
+            return false;
+        }
+        if (!this.levelInnerWall) {
+            console.error('[GridController] Missing levelInnerWall');
             return false;
         }
         if (!this.levelWallShadow) {

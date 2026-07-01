@@ -13,6 +13,9 @@ export class UI_ChooseLevelCard extends Component {
     @property(ParentSizeScaler)
     public bannerScaler: ParentSizeScaler | null = null;
 
+    @property(UIOpacity)
+    public light: UIOpacity | null = null;
+
     private index = -1;
     private onSelected: ((index: number) => void) | null = null;
 
@@ -32,6 +35,7 @@ export class UI_ChooseLevelCard extends Component {
     public normalize(): void {
         if (this.coverOpacity) this.coverOpacity.node.active = false;
         if (this.bannerSprite) this.bannerSprite.node.active = false;
+        this.hideGuideLight();
     }
 
     public hideResult(): void {
@@ -58,8 +62,39 @@ export class UI_ChooseLevelCard extends Component {
 
     public block() {
         this.deinitialize();
+        this.hideGuideLight();
     }
 
+    public playGuideLight(onComplete: () => void): boolean {
+        if (!this.light) {
+            console.error('[UI_ChooseLevelCard] Missing light');
+            return false;
+        }
+
+        Tween.stopAllByTarget(this.light);
+        this.light.node.active = true;
+        this.light.opacity = 0;
+        tween(this.light)
+            .to(0.65, { opacity: 210 }, { easing: 'sineInOut' })
+            .delay(0.8)
+            .to(0.65, { opacity: 0 }, { easing: 'sineInOut' })
+            .delay(0.45)
+            .call(() => {
+                if (this.light) this.light.node.active = false;
+                onComplete();
+            })
+            .start();
+
+        return true;
+    }
+
+    public hideGuideLight(): void {
+        if (!this.light) return;
+
+        Tween.stopAllByTarget(this.light);
+        this.light.opacity = 0;
+        this.light.node.active = false;
+    }
 
     private handleTouch(): void {
         this.onSelected?.(this.index);

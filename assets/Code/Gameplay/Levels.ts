@@ -51,8 +51,7 @@ const PIG_LEVEL_ROWS = [
     '#.........................#',
     '#.........................#',
     '#.........................#',
-    '#.........................#',
-    '#.....#.............#.....#',
+    '#....##.............##....#',
     '#######......p......#######',
     '###########################',
 ];
@@ -80,9 +79,8 @@ const NARROW_LEVEL_ROWS = [
     '#.................#',
     '#.................#',
     '#.................#',
-    '#.................#',
-    '#...#.........#...#',
-    '#####....p....#####',
+    '#...##.......##...#',
+    '######...p...######',
     '###################',
 ];
 
@@ -112,9 +110,8 @@ const PARROT_LEVEL_ROWS = [
     '#...................#',
     '#...................#',
     '#...................#',
-    '#...................#',
-    '#...#...........#...#',
-    '#####.....p.....#####',
+    '#...##.........##...#',
+    '######....p....######',
     '#####################',
 ];
 
@@ -136,7 +133,7 @@ function createLevel(rows: string[], enemyShape: number[][], enemyColors?: Recor
 
 export const LEVELS: LevelConfig[] = [
     createLevel(PIG_LEVEL_ROWS, PIG_SHAPE, LEVEL_ENEMY_COLORS),
-    createLevel(NARROW_LEVEL_ROWS, BANANA_SHAPE, LEVEL_ENEMY_COLORS, 1, -3, 1.6, 1.0),
-    createLevel(PARROT_LEVEL_ROWS, PARROT_SHAPE, LEVEL_ENEMY_COLORS, undefined, 0, 1.8, 1.1),
     createLevel(NARROW_LEVEL_ROWS, CUTE_FACE_SHAPE, { 1: LEVEL_ENEMY_COLORS[9] }, 1, 0, 1.6, 1.0),
+    createLevel(PARROT_LEVEL_ROWS, PARROT_SHAPE, LEVEL_ENEMY_COLORS, undefined, 0, 1.8, 1.1),
+    createLevel(NARROW_LEVEL_ROWS, BANANA_SHAPE, LEVEL_ENEMY_COLORS, 1, -3, 1.6, 1.0),
 ];

@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.Prefab",
-    "_name": "Level_Wall_Shadow",
+    "_name": "Level_Wall_Inner",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_native": "",
@@ -13,7 +13,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "Level_Wall_Shadow",
+    "_name": "Level_Wall_Inner",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": null,
@@ -65,7 +65,7 @@
       "__id__": 1
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 3
@@ -77,7 +77,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 0.125,
+      "y": 0.5,
       "z": 0
     },
     "_lrot": {
@@ -90,7 +90,7 @@
     "_lscale": {
       "__type__": "cc.Vec3",
       "x": 1,
-      "y": 0.125,
+      "y": 1,
       "z": 1
     },
     "_mobility": 0,
@@ -117,7 +117,7 @@
     },
     "_materials": [
       {
-        "__uuid__": "70dc820a-6334-42d5-bc28-bd8e8118e0d4",
+        "__uuid__": "c799e31c-8c8b-4732-93f0-d1fb1c1ca3ed",
         "__expectedType__": "cc.Material"
       }
     ],
