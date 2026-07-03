@@ -51,6 +51,7 @@ const PIG_LEVEL_ROWS = [
     '#.........................#',
     '#.........................#',
     '#.........................#',
+    '#.........................#',
     '#....##.............##....#',
     '#######......p......#######',
     '###########################',
@@ -58,6 +59,7 @@ const PIG_LEVEL_ROWS = [
 
 const NARROW_LEVEL_ROWS = [
     '###################',
+    '#.................#',
     '#.................#',
     '#.................#',
     '#.................#',
@@ -110,6 +112,7 @@ const PARROT_LEVEL_ROWS = [
     '#...................#',
     '#...................#',
     '#...................#',
+    '#...................#',
     '#...##.........##...#',
     '######....p....######',
     '#####################',
@@ -118,15 +121,15 @@ const PARROT_LEVEL_ROWS = [
 function createLevel(rows: string[], enemyShape: number[][], enemyColors?: Record<number, string>, playerThemeIndex?: number, enemyX = 0, cameraZoomPortrait = 33 / 16, cameraZoomLandscape = 25 / 19): LevelConfig {
     return {
         rows,
-        tunnelLength: 6,
+        tunnelLength: 3,
         cameraOffsetZPortrait: 0,
         cameraOffsetZLandscape: -1.5,
         cameraZoomPortrait,
         cameraZoomLandscape,
         enemyShape,
         enemyColors,
-        enemyPositionStart: new Vec2(enemyX, 1),
-        enemyPositionEnd: new Vec2(enemyX, 9),
+        enemyPositionStart: new Vec2(enemyX, 0),
+        enemyPositionEnd: new Vec2(enemyX, Math.max(0, rows.length - 2 - enemyShape.length)),
         playerThemeIndex,
     };
 }
@@ -135,5 +138,5 @@ export const LEVELS: LevelConfig[] = [
     createLevel(PIG_LEVEL_ROWS, PIG_SHAPE, LEVEL_ENEMY_COLORS),
     createLevel(NARROW_LEVEL_ROWS, CUTE_FACE_SHAPE, { 1: LEVEL_ENEMY_COLORS[9] }, 1, 0, 1.6, 1.0),
     createLevel(PARROT_LEVEL_ROWS, PARROT_SHAPE, LEVEL_ENEMY_COLORS, undefined, 0, 1.8, 1.1),
-    createLevel(NARROW_LEVEL_ROWS, BANANA_SHAPE, LEVEL_ENEMY_COLORS, 1, -3, 1.6, 1.0),
+    createLevel(NARROW_LEVEL_ROWS, BANANA_SHAPE, LEVEL_ENEMY_COLORS, 1, -1, 1.4, 1.0),
 ];
