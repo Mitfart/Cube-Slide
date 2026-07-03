@@ -9,6 +9,12 @@ import { UIManager } from '../UI/UIManager';
 import { UI_ChooseLevelController } from '../UI/UI_ChooseLevelController';
 import { UI_GameDownloadBtn } from '../../Cocos_Engine/General/Code/export/UI_GameDownloadBtn';
 const { ccclass, property } = _decorator;
+
+const PORTRAIT_ZOOM_FACTOR = 0.9;
+const TABLET_PORTRAIT_ZOOM_FACTOR = 0.82;
+const TABLET_PORTRAIT_MIN_ASPECT = 0.65;
+const TABLET_PORTRAIT_MAX_ASPECT = 0.82;
+
 interface CameraTarget {
     levelIndex: number;
     nextLevelIndex: number;
@@ -618,7 +624,7 @@ export class GameManager extends Component {
         const b = this.currentLevels[target.nextLevelIndex];
         const zoomA = isLandscape ? a.cameraZoomLandscape : a.cameraZoomPortrait;
         const zoomB = b ? (isLandscape ? b.cameraZoomLandscape : b.cameraZoomPortrait) : zoomA;
-        return this.lerp(zoomA, zoomB, target.t);
+        return this.lerp(zoomA, zoomB, target.t) * this.getCameraZoomFactor(isLandscape);
     }
 
     private getCameraOffsetZ(isLandscape: boolean, target: CameraTarget): number {
@@ -647,6 +653,18 @@ export class GameManager extends Component {
 
     private lerp(a: number, b: number, t: number): number {
         return a + (b - a) * t;
+    }
+
+    private getCameraZoomFactor(isLandscape: boolean): number {
+        if (isLandscape) {
+            return 1;
+        }
+
+        const size = view.getVisibleSize();
+        const aspect = size.width / Math.max(1, size.height);
+        return aspect >= TABLET_PORTRAIT_MIN_ASPECT && aspect <= TABLET_PORTRAIT_MAX_ASPECT
+            ? TABLET_PORTRAIT_ZOOM_FACTOR
+            : PORTRAIT_ZOOM_FACTOR;
     }
 
     private isLandscape(): boolean {

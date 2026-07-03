@@ -481,12 +481,12 @@ export class GridController extends Component {
     }
 
     private spawnMergedWalls(tiles: Map<string, string>, innerWalls: Set<string>): void {
-        this.spawnWallGroup(new Set([...tiles].filter(([key, symbol]) => symbol === '#' && !innerWalls.has(key)).map(([key]) => key)), this.levelWall, tiles);
-        this.spawnWallGroup(new Set(innerWalls), this.levelInnerWall, tiles);
+        this.spawnWallGroup(new Set(Array.from(tiles).filter(([key, symbol]) => symbol === '#' && !innerWalls.has(key)).map(([key]) => key)), this.levelWall, tiles);
+        this.spawnWallGroup(new Set(Array.from(innerWalls)), this.levelInnerWall, tiles);
     }
 
     private spawnWallGroup(walls: Set<string>, prefab: Prefab | null, tiles: Map<string, string>): void {
-        for (const key of [...walls]) {
+        for (const key of Array.from(walls)) {
             if (!walls.has(key)) continue;
 
             const [x, z] = this.parseTile(key);
@@ -499,7 +499,7 @@ export class GridController extends Component {
             this.deleteRun(walls, x, z, 0, 1, depth);
         }
 
-        for (const key of [...walls]) {
+        for (const key of Array.from(walls)) {
             if (!walls.has(key)) continue;
 
             const [x, z] = this.parseTile(key);
@@ -508,6 +508,13 @@ export class GridController extends Component {
             const width = this.countRun(walls, x, z, 1, 0);
             this.spawnWallRun(x, z, width, 1, prefab, tiles);
             this.deleteRun(walls, x, z, 1, 0, width);
+        }
+        for (const key of Array.from(walls)) {
+            if (!walls.has(key)) continue;
+
+            const [x, z] = this.parseTile(key);
+            this.spawnWallRun(x, z, 1, 1, prefab, tiles);
+            walls.delete(key);
         }
     }
 
@@ -556,13 +563,14 @@ export class GridController extends Component {
         }
     }
 
-    private spawnScaled(prefab: Prefab | null, x: number, z: number, width: number, depth: number): void {
+    private spawnScaled(prefab: Prefab | null, x: number, z: number, width: number, depth: number): Node | null {
         if (!prefab) {
-            return;
+            return null;
         }
 
         const tile = this.spawnPrefab(prefab, x, z);
         tile.setScale(width, 1, depth);
+        return tile;
     }
 
     private spawnPrefab(prefab: Prefab, x: number, z: number): Node {

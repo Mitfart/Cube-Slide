@@ -83,6 +83,7 @@ export class PlayerController extends Component {
         this.currentLives = this.maxLives;
         this.applyMaterialColor(this.node, this.playerColor);
         this.applyPlayerSpriteFrame();
+        this.setPlayerAlpha(255);
         this.fillSpawnCell();
     }
 
@@ -112,6 +113,7 @@ export class PlayerController extends Component {
         this.node.active = true;
         this.inputLocked = false;
         this.applyPlayerSpriteFrame();
+        this.setPlayerAlpha(255);
         this.fillSpawnCell();
     }
 
@@ -260,6 +262,9 @@ export class PlayerController extends Component {
         const center = new Vec3(exit.x, this.node.position.y, this.node.position.z);
         const firstDuration = Vec3.distance(this.node.position, center) / this.cellsPerSecond;
         const secondDuration = Vec3.distance(center, exit) / this.cellsPerSecond;
+        if (gameEnd) {
+            this.fadePlayer(firstDuration + secondDuration);
+        }
         tween(this.node)
             .to(firstDuration, { position: center }, { easing: 'sineInOut' })
             .to(secondDuration, { position: exit }, { easing: 'sineInOut' })
@@ -335,6 +340,27 @@ export class PlayerController extends Component {
         }
 
         this.playerSpriteRenderer.spriteFrame = this.playerSpriteFrame;
+    }
+
+    private fadePlayer(duration: number): void {
+        if (!this.playerSpriteRenderer) {
+            return;
+        }
+
+        const color = (this.playerSpriteRenderer.color ?? Color.WHITE).clone();
+        tween(color)
+            .to(duration, { a: 0 }, { onUpdate: () => this.playerSpriteRenderer!.color = color })
+            .start();
+    }
+
+    private setPlayerAlpha(alpha: number): void {
+        if (!this.playerSpriteRenderer) {
+            return;
+        }
+
+        const color = (this.playerSpriteRenderer.color ?? Color.WHITE).clone();
+        color.a = alpha;
+        this.playerSpriteRenderer.color = color;
     }
 
     private hasRequiredFields(): boolean {
