@@ -34,7 +34,7 @@ export const CUTE_FACE_SHAPE = [
 
 export const LEVEL_ENEMY_COLORS = {
     1: '#161819', // Din
-    4: '#7d422b', // B
+    4: '#7d422b', // Bs
     9: '#ffdc02', // Y
     7: '#74b418', // G
     10: '#2e43bb', // BLUE
@@ -42,7 +42,7 @@ export const LEVEL_ENEMY_COLORS = {
     3: '#c9211c', // R
     5: '#721e2b', // DP
     6: '#b74052', // P
-    11: '#ff6c8f', // LP
+    11: '#ff688e', // LP
     12: '#ffffff', // W
 };
 

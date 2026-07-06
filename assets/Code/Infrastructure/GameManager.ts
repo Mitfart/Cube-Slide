@@ -10,8 +10,9 @@ import { UI_ChooseLevelController } from '../UI/UI_ChooseLevelController';
 import { UI_GameDownloadBtn } from '../../Cocos_Engine/General/Code/export/UI_GameDownloadBtn';
 const { ccclass, property } = _decorator;
 
-const PORTRAIT_ZOOM_FACTOR = 0.9;
-const TABLET_PORTRAIT_ZOOM_FACTOR = 0.82;
+const PORTRAIT_ZOOM_FACTOR = 0.8;
+const TABLET_PORTRAIT_ZOOM_FACTOR = 0.74;
+const PORTRAIT_OFFSET_Z = 3;
 const TABLET_PORTRAIT_MIN_ASPECT = 0.65;
 const TABLET_PORTRAIT_MAX_ASPECT = 0.82;
 
@@ -632,7 +633,7 @@ export class GameManager extends Component {
         const b = this.currentLevels[target.nextLevelIndex];
         const offsetA = isLandscape ? (a.cameraOffsetZLandscape ?? 0) : (a.cameraOffsetZPortrait ?? 0);
         const offsetB = b ? (isLandscape ? (b.cameraOffsetZLandscape ?? 0) : (b.cameraOffsetZPortrait ?? 0)) : offsetA;
-        return this.lerp(offsetA, offsetB, target.t);
+        return this.lerp(offsetA, offsetB, target.t) - (isLandscape ? 0 : PORTRAIT_OFFSET_Z);
     }
 
     private getCameraTarget(): CameraTarget {

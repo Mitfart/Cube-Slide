@@ -118,12 +118,12 @@ const PARROT_LEVEL_ROWS = [
     '#####################',
 ];
 
-function createLevel(rows: string[], enemyShape: number[][], enemyColors?: Record<number, string>, playerThemeIndex?: number, enemyX = 0, cameraZoomPortrait = 33 / 16, cameraZoomLandscape = 25 / 19): LevelConfig {
+function createLevel(rows: string[], enemyShape: number[][], enemyColors?: Record<number, string>, playerThemeIndex?: number, enemyX = 0, cameraZoomPortrait = 33 / 16, cameraZoomLandscape = 25 / 19, cameraOffsetZPortrait = 0, cameraOffsetZLandscape = -1.5): LevelConfig {
     return {
         rows,
         tunnelLength: 3,
-        cameraOffsetZPortrait: 0,
-        cameraOffsetZLandscape: -1.5,
+        cameraOffsetZPortrait,
+        cameraOffsetZLandscape,
         cameraZoomPortrait,
         cameraZoomLandscape,
         enemyShape,
@@ -135,8 +135,8 @@ function createLevel(rows: string[], enemyShape: number[][], enemyColors?: Recor
 }
 
 export const LEVELS: LevelConfig[] = [
-    createLevel(PIG_LEVEL_ROWS, PIG_SHAPE, LEVEL_ENEMY_COLORS),
+    createLevel(PIG_LEVEL_ROWS, PIG_SHAPE, LEVEL_ENEMY_COLORS, undefined, 0, 2.4, 1.5, -0.5, -2),
     createLevel(NARROW_LEVEL_ROWS, CUTE_FACE_SHAPE, { 1: LEVEL_ENEMY_COLORS[9] }, 1, 0, 1.6, 1.0),
     createLevel(PARROT_LEVEL_ROWS, PARROT_SHAPE, LEVEL_ENEMY_COLORS, undefined, 0, 1.8, 1.1),
-    createLevel(NARROW_LEVEL_ROWS, BANANA_SHAPE, LEVEL_ENEMY_COLORS, 1, -1, 1.4, 1.0),
+    createLevel(NARROW_LEVEL_ROWS, BANANA_SHAPE, LEVEL_ENEMY_COLORS, 1, -1, 1.6, 1.0),
 ];

@@ -70,6 +70,7 @@ export class UI_ChooseLevelController extends Component {
             card?.normalize();
         }
         this.updateCardsLayout();
+        this.scheduleOnce(() => this.updateCardsLayout(), 0);
         this.screen?.show(() => { 
             this.updateCardsLayout();
             this.updateResultCards(true);
