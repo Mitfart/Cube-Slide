@@ -62,6 +62,7 @@ export class GridController extends Component {
     private readonly levelSpawns: Vec3[] = [];
     private readonly cameraTransitionZ: Vec2[] = [];
     private readonly visualSpawnQueue: (() => void)[] = [];
+    private readonly processVisualSpawnQueueCallback = (): void => this.processVisualSpawnQueue();
     public onCoinCollected: ((coin: Node) => void) | null = null;
     private fillSoundActive = false;
     private fillSoundTicket = 0;
@@ -113,7 +114,7 @@ export class GridController extends Component {
     }
 
     protected onDisable(): void {
-        this.unschedule(this.processVisualSpawnQueue);
+        this.unschedule(this.processVisualSpawnQueueCallback);
         this.visualSpawnQueue.length = 0;
     }
 
@@ -179,7 +180,7 @@ export class GridController extends Component {
     }
 
     public clearLevel(): void {
-        this.unschedule(this.processVisualSpawnQueue);
+        this.unschedule(this.processVisualSpawnQueueCallback);
         this.visualSpawnQueue.length = 0;
 
         for (const tile of this.spawned) {
@@ -551,7 +552,7 @@ export class GridController extends Component {
     private spawnWallRun(x: number, z: number, width: number, depth: number, prefab: Prefab | null, tiles: Map<string, string>): void {
         const centerX = x + (width - 1) / 2;
         const centerZ = z + (depth - 1) / 2;
-        this.visualSpawnQueue.push(() => this.spawnScaled(prefab, centerX, centerZ, width, depth));
+        this.spawnScaled(prefab, centerX, centerZ, width, depth);
         this.spawnShadow(centerX, centerZ, width, depth, tiles);
     }
 
@@ -562,11 +563,11 @@ export class GridController extends Component {
     private processVisualSpawnQueue(): void {
         const count = Math.max(1, this.visualSpawnsPerFrame);
         for (let i = 0; i < count && this.visualSpawnQueue.length > 0; i++) {
-            this.visualSpawnQueue.pop()?.();
+            this.visualSpawnQueue.shift()?.();
         }
 
         if (this.visualSpawnQueue.length > 0) {
-            this.scheduleOnce(this.processVisualSpawnQueue, 0);
+            this.scheduleOnce(this.processVisualSpawnQueueCallback, 0);
         }
     }
 
