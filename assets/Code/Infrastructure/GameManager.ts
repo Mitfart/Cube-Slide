@@ -1,4 +1,4 @@
-import { _decorator, Button, Camera, Color, Component, instantiate, Mat4, Node, ParticleSystem, Prefab, SpriteFrame, SpriteRenderer, Vec2, Vec3, view } from 'cc';
+import { _decorator, Button, Camera, Color, Component, instantiate, Layers, Mat4, Node, ParticleSystem, Prefab, SpriteFrame, SpriteRenderer, Vec2, Vec3, view } from 'cc';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
 import { GridController } from './GridController';
 import { EnemyController } from '../Enemy/EnemyController';
@@ -8,6 +8,7 @@ import { SoundManager } from './Services/SoundManager';
 import { UIManager } from '../UI/UIManager';
 import { UI_ChooseLevelController } from '../UI/UI_ChooseLevelController';
 import { UI_GameDownloadBtn } from '../../Cocos_Engine/General/Code/export/UI_GameDownloadBtn';
+import { UI_SwipeTutorial } from '../UI/UI_SwipeTutorial';
 const { ccclass, property } = _decorator;
 
 const PORTRAIT_ZOOM_FACTOR = 0.8;
@@ -78,6 +79,9 @@ export class GameManager extends Component {
     @property(UI_ChooseLevelController)
     public chooseLevelUI: UI_ChooseLevelController | null = null;
 
+    @property(Prefab)
+    public swipeTutorialPrefab: Prefab | null = null;
+
     @property
     public resultScreenDuration = 1.5;
 
@@ -103,6 +107,7 @@ export class GameManager extends Component {
     private hasEmitted25Percent: boolean = false;
     private hasEmitted50Percent: boolean = false;
     private hasEmitted75Percent: boolean = false;
+    private swipeTutorialShown = false;
 
     protected onLoad(): void {
         Analytics.emit(AnalyticEvents.LOADING);
@@ -147,6 +152,37 @@ export class GameManager extends Component {
         this.buildLevels([level]);
         
         Analytics.emit(AnalyticEvents.CHALLENGE_STARTED);
+    }
+
+    public showSwipeTutorial(): void {
+        if (this.swipeTutorialShown) return;
+        this.swipeTutorialShown = true;
+
+        if (!this.swipeTutorialPrefab) {
+            console.error('[GameManager] Missing swipeTutorialPrefab');
+            return;
+        }
+
+        const tutorialNode = instantiate(this.swipeTutorialPrefab);
+        const parent = this.chooseLevelUI?.node.parent ?? this.node.parent ?? this.node;
+        tutorialNode.setParent(parent, false);
+        this.setLayerRecursively(tutorialNode, this.chooseLevelUI?.node.layer ?? Layers.Enum.UI_2D);
+
+        const tutorial = tutorialNode.getComponent(UI_SwipeTutorial);
+        if (!tutorial) {
+            console.error('[GameManager] Missing UI_SwipeTutorial on swipeTutorialPrefab');
+            tutorialNode.destroy();
+            return;
+        }
+
+        tutorial.play(() => tutorialNode.destroy());
+    }
+
+    private setLayerRecursively(node: Node, layer: number): void {
+        node.layer = layer;
+        for (const child of node.children) {
+            this.setLayerRecursively(child, layer);
+        }
     }
 
     public buildLevels(levels: LevelConfig[]): void {

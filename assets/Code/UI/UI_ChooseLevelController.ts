@@ -22,7 +22,7 @@ export class UI_ChooseLevelController extends Component {
     public screen: UI_Screen | null = null;
 
     private readonly levelResults: (boolean | null)[] = [];
-    private gameManager: { buildLevel(level: LevelConfig): void } | null = null;
+    private gameManager: { buildLevel(level: LevelConfig): void; showSwipeTutorial?(): void } | null = null;
     private guideLoopActive = false;
     private guideIndex = 0;
     private choosing = false;
@@ -38,7 +38,7 @@ export class UI_ChooseLevelController extends Component {
         }
     }
 
-    public setGameManager(gameManager: { buildLevel(level: LevelConfig): void }): void {
+    public setGameManager(gameManager: { buildLevel(level: LevelConfig): void; showSwipeTutorial?(): void }): void {
         this.gameManager = gameManager;
     }
 
@@ -67,6 +67,7 @@ export class UI_ChooseLevelController extends Component {
     }
 
     public show(onComplete: () => void = null): void {
+        this.node.active = true;
         this.choosing = false;
         const opacity = this.node.getComponent(UIOpacity) ?? this.node.addComponent(UIOpacity);
         Tween.stopAllByTarget(opacity);
@@ -94,6 +95,7 @@ export class UI_ChooseLevelController extends Component {
             .call(() => {
                 this.screen?.hide(true);
                 opacity.opacity = 255;
+                this.node.active = false;
                 onComplete?.();
             })
             .start();
@@ -272,6 +274,6 @@ export class UI_ChooseLevelController extends Component {
 
         this.choosing = true;
         this.gameManager.buildLevel(level);
-        this.scheduleOnce(() => this.hide(), 0.35);
+        this.scheduleOnce(() => this.hide(() => this.gameManager?.showSwipeTutorial?.()), 0.35);
     }
 }

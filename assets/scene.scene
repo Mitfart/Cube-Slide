@@ -1806,6 +1806,10 @@
       "__id__": 104
     },
     "chooseLevelUI": null,
+    "swipeTutorialPrefab": {
+      "__uuid__": "014981a7-a9e7-4470-9fcb-26f0875c2804",
+      "__expectedType__": "cc.Prefab"
+    },
     "resultScreenDuration": 1.5,
     "minimumDragDistance": 40,
     "levelViews": [
@@ -1863,6 +1867,8 @@
       "__expectedType__": "cc.Prefab"
     },
     "soundManager": null,
+    "visualSpawnsPerFrame": 24,
+    "animateFillSpawns": false,
     "_id": "abcw8qm3JDDal1qopliQKi"
   },
   {
