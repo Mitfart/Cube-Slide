@@ -28,6 +28,7 @@ export class UI_ChooseLevelCard extends Component {
 
     public deinitialize(): void {
         this.node.off(Node.EventType.TOUCH_END, this.handleTouch, this);
+        Tween.stopAllByTarget(this.node);
         this.onSelected = null;
         this.index = -1;
     }
@@ -97,7 +98,20 @@ export class UI_ChooseLevelCard extends Component {
     }
 
     private handleTouch(): void {
+        this.node.off(Node.EventType.TOUCH_END, this.handleTouch, this);
         this.onSelected?.(this.index);
+        this.playChooseBounce();
+    }
+
+    private playChooseBounce(): void {
+        const targetScale = this.node.scale.clone();
+        const upScale = new Vec3(targetScale.x * 1.16, targetScale.y * 1.16, targetScale.z);
+
+        Tween.stopAllByTarget(this.node);
+        tween(this.node)
+            .to(0.35, { scale: upScale }, { easing: 'quadOut' })
+            .to(0.55, { scale: targetScale }, { easing: 'backOut' })
+            .start();
     }
 
     private playBannerScaleIn(): void {

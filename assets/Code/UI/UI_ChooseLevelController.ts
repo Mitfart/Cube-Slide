@@ -1,4 +1,4 @@
-import { _decorator, Component, Layers, Layout, Node, Size, SpriteFrame, UITransform, view } from 'cc';
+import { _decorator, Component, Layers, Layout, Node, Size, SpriteFrame, tween, Tween, UIOpacity, UITransform, view } from 'cc';
 import { UI_Screen } from '../../Cocos_Engine/General/Code/ui/UI_Screen';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
 import { UI_ChooseLevelCard } from './UI_ChooseLevelCard';
@@ -25,6 +25,7 @@ export class UI_ChooseLevelController extends Component {
     private gameManager: { buildLevel(level: LevelConfig): void } | null = null;
     private guideLoopActive = false;
     private guideIndex = 0;
+    private choosing = false;
 
     protected onLoad(): void {
         this.setLayerRecursively(this.node, Layers.Enum.UI_2D);
@@ -66,6 +67,10 @@ export class UI_ChooseLevelController extends Component {
     }
 
     public show(onComplete: () => void = null): void {
+        this.choosing = false;
+        const opacity = this.node.getComponent(UIOpacity) ?? this.node.addComponent(UIOpacity);
+        Tween.stopAllByTarget(opacity);
+        opacity.opacity = 255;
         for (const card of this.getCards()) {
             card?.normalize();
         }
@@ -81,7 +86,17 @@ export class UI_ChooseLevelController extends Component {
 
     public hide(onComplete: () => void = null): void {
         this.stopGuideLoop();
-        this.screen?.hide(false, onComplete);
+        const opacity = this.node.getComponent(UIOpacity) ?? this.node.addComponent(UIOpacity);
+        Tween.stopAllByTarget(opacity);
+        opacity.opacity = 255;
+        tween(opacity)
+            .to(0.5, { opacity: 0 }, { easing: 'sineInOut' })
+            .call(() => {
+                this.screen?.hide(true);
+                opacity.opacity = 255;
+                onComplete?.();
+            })
+            .start();
     }
 
     public setLevelResult(index: number, won: boolean): void {
@@ -242,7 +257,7 @@ export class UI_ChooseLevelController extends Component {
     }
 
     private chooseLevel(index: number): void {
-        if (this.levelResults[index] !== null && this.levelResults[index] !== undefined) {
+        if (this.choosing || this.levelResults[index] !== null && this.levelResults[index] !== undefined) {
             return;
         }
         if (!this.gameManager) {
@@ -255,7 +270,8 @@ export class UI_ChooseLevelController extends Component {
             return;
         }
 
+        this.choosing = true;
         this.gameManager.buildLevel(level);
-        this.hide();
+        this.scheduleOnce(() => this.hide(), 0.35);
     }
 }

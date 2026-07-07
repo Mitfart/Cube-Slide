@@ -38,6 +38,9 @@ export class GridController extends Component {
     @property({ type: SoundManager, visible: false })
     public soundManager: SoundManager | null = null;
 
+    @property
+    public visualSpawnsPerFrame = 24;
+
     private readonly cellSize = 1;
     private readonly spawned: Node[] = [];
     private readonly walkableTiles = new Set<string>();
@@ -55,6 +58,7 @@ export class GridController extends Component {
     private readonly levelCenters: Vec3[] = [];
     private readonly levelSpawns: Vec3[] = [];
     private readonly cameraTransitionZ: Vec2[] = [];
+    private readonly visualSpawnQueue: (() => void)[] = [];
     public onCoinCollected: ((coin: Node) => void) | null = null;
     private fillSoundActive = false;
     private fillSoundTicket = 0;
@@ -99,9 +103,15 @@ export class GridController extends Component {
             if (symbol !== '#') {
                 const [x, z] = this.parseTile(key);
                 this.walkableTiles.add(key);
-                this.spawnTile(symbol, x, z);
+                this.visualSpawnQueue.push(() => this.spawnTile(symbol, x, z));
             }
         }
+        this.processVisualSpawnQueue();
+    }
+
+    protected onDisable(): void {
+        this.unschedule(this.processVisualSpawnQueue);
+        this.visualSpawnQueue.length = 0;
     }
 
     public getLevelCenter(level: LevelConfig): Vec3 {
@@ -166,6 +176,9 @@ export class GridController extends Component {
     }
 
     public clearLevel(): void {
+        this.unschedule(this.processVisualSpawnQueue);
+        this.visualSpawnQueue.length = 0;
+
         for (const tile of this.spawned) {
             if (tile.isValid) {
                 tile.destroy();
@@ -535,12 +548,23 @@ export class GridController extends Component {
     private spawnWallRun(x: number, z: number, width: number, depth: number, prefab: Prefab | null, tiles: Map<string, string>): void {
         const centerX = x + (width - 1) / 2;
         const centerZ = z + (depth - 1) / 2;
-        this.spawnScaled(prefab, centerX, centerZ, width, depth);
+        this.visualSpawnQueue.push(() => this.spawnScaled(prefab, centerX, centerZ, width, depth));
         this.spawnShadow(centerX, centerZ, width, depth, tiles);
     }
 
     private spawnTile(symbol: string, x: number, z: number): void {
         this.spawnScaled(this.getPrefab(symbol), x, z, 1, 1);
+    }
+
+    private processVisualSpawnQueue(): void {
+        const count = Math.max(1, this.visualSpawnsPerFrame);
+        for (let i = 0; i < count && this.visualSpawnQueue.length > 0; i++) {
+            this.visualSpawnQueue.pop()?.();
+        }
+
+        if (this.visualSpawnQueue.length > 0) {
+            this.scheduleOnce(this.processVisualSpawnQueue, 0);
+        }
     }
 
     private spawnShadow(x: number, z: number, width: number, depth: number, tiles: Map<string, string>): void {
@@ -559,7 +583,7 @@ export class GridController extends Component {
             const maxZ = Math.min(shadowMaxZ, tileZ + 0.5);
             if (minX >= maxX || minZ >= maxZ) continue;
 
-            this.spawnScaled(this.levelWallShadow, (minX + maxX) / 2, (minZ + maxZ) / 2, maxX - minX, maxZ - minZ);
+            this.visualSpawnQueue.push(() => this.spawnScaled(this.levelWallShadow, (minX + maxX) / 2, (minZ + maxZ) / 2, maxX - minX, maxZ - minZ));
         }
     }
 
