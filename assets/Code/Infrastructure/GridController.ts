@@ -41,6 +41,9 @@ export class GridController extends Component {
     @property
     public visualSpawnsPerFrame = 24;
 
+    @property
+    public animateFillSpawns = false;
+
     private readonly cellSize = 1;
     private readonly spawned: Node[] = [];
     private readonly walkableTiles = new Set<string>();
@@ -607,6 +610,8 @@ export class GridController extends Component {
 
     private setFilled(x: number, z: number, prefab: Prefab, animate: boolean, delay = 0, force = false, color?: Color, delaySpawn = false): void {
         const key = this.key(x, z);
+        const shouldAnimate = animate && this.animateFillSpawns;
+        const shouldDelaySpawn = shouldAnimate && delaySpawn;
         if ((!force && !this.fillableTiles.has(key)) || this.fillNodes.has(key)) {
             return;
         }
@@ -625,8 +630,8 @@ export class GridController extends Component {
             const fill = this.spawnPrefab(prefab, x, z);
             if (color) this.applyMaterialColor(fill, color);
             this.fillNodes.set(key, fill);
-            if (animate) {
-                this.playFillSpawn(fill, delaySpawn ? 0 : delay, () => {
+            if (shouldAnimate) {
+                this.playFillSpawn(fill, shouldDelaySpawn ? 0 : delay, () => {
                     this.filledTiles.add(key);
                     this.collectCoinKey(key);
                 });
@@ -637,7 +642,7 @@ export class GridController extends Component {
             this.collectCoinKey(key);
         };
 
-        if (delaySpawn && delay > 0) {
+        if (shouldDelaySpawn && delay > 0) {
             this.scheduleOnce(spawn, delay);
             return;
         }
