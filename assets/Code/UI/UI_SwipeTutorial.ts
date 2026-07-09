@@ -6,12 +6,6 @@ export class UI_SwipeTutorial extends Component {
     @property(UIOpacity)
     public opacity: UIOpacity | null = null;
 
-    @property(Sprite)
-    public cursorSprite: Sprite | null = null;
-
-    @property(Texture2D)
-    public cursorTexture: Texture2D | null = null;
-
     @property
     public swipeDistance = 80;
 
@@ -34,18 +28,6 @@ export class UI_SwipeTutorial extends Component {
             console.error('[UI_SwipeTutorial] Missing opacity');
             return;
         }
-        if (!this.cursorSprite) {
-            console.error('[UI_SwipeTutorial] Missing cursorSprite');
-            return;
-        }
-        if (!this.cursorTexture) {
-            console.error('[UI_SwipeTutorial] Missing cursorTexture');
-            return;
-        }
-
-        const spriteFrame = new SpriteFrame();
-        spriteFrame.texture = this.cursorTexture;
-        this.cursorSprite.spriteFrame = spriteFrame;
 
         this.onHidden = onHidden;
         this.hiddenByPlayer = false;
