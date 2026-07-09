@@ -102,14 +102,14 @@ export class GridController extends Component {
             nextBottomZ = bounds.tunnelMinZ - 1;
         }
 
-        this.spawnMergedWalls(tiles, innerWalls);
         for (const [key, symbol] of tiles) {
             if (symbol !== '#') {
                 const [x, z] = this.parseTile(key);
                 this.walkableTiles.add(key);
-                this.visualSpawnQueue.push(() => this.spawnTile(symbol, x, z));
+                this.spawnTile(symbol, x, z);
             }
         }
+        this.spawnMergedWalls(tiles, innerWalls);
         this.processVisualSpawnQueue();
     }
 
