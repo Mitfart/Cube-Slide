@@ -1,5 +1,6 @@
-import { _decorator, Component, Node, Sprite, SpriteFrame, tween, Tween, UIOpacity, Vec3 } from 'cc';
+import { _decorator, Component, instantiate, Node, Prefab, Sprite, SpriteFrame, tween, Tween, UIOpacity, UITransform, Vec3 } from 'cc';
 import { ParentSizeScaler } from './ParentSizeScaler';
+import { UI_ChooseLevelParticles } from './UI_ChooseLevelParticles';
 const { ccclass, property } = _decorator;
 
 @ccclass('UI_ChooseLevelCard')
@@ -15,6 +16,9 @@ export class UI_ChooseLevelCard extends Component {
 
     @property(UIOpacity)
     public light: UIOpacity | null = null;
+
+    @property(Prefab)
+    public chooseParticlesPrefab: Prefab | null = null;
 
     private index = -1;
     private onSelected: ((index: number) => void) | null = null;
@@ -100,7 +104,35 @@ export class UI_ChooseLevelCard extends Component {
     private handleTouch(): void {
         this.node.off(Node.EventType.TOUCH_END, this.handleTouch, this);
         this.onSelected?.(this.index);
+        this.playChooseParticles();
         this.playChooseBounce();
+    }
+
+    private playChooseParticles(): void {
+        if (!this.chooseParticlesPrefab) {
+            console.error('[UI_ChooseLevelCard] Missing chooseParticlesPrefab');
+            return;
+        }
+
+        const parent = this.node.parent?.parent ?? this.node.parent;
+        if (!parent) return;
+
+        const burst = instantiate(this.chooseParticlesPrefab);
+        this.setLayerRecursively(burst, this.node.layer);
+        burst.setParent(parent);
+        burst.setWorldPosition(this.node.worldPosition);
+        burst.setSiblingIndex(9999);
+
+        const size = this.node.getComponent(UITransform)?.contentSize;
+        const scale = size ? Math.min(size.width, size.height) / 300 : 1;
+        burst.getComponent(UI_ChooseLevelParticles)?.play(scale);
+    }
+
+    private setLayerRecursively(node: Node, layer: number): void {
+        node.layer = layer;
+        for (const child of node.children) {
+            this.setLayerRecursively(child, layer);
+        }
     }
 
     private playChooseBounce(): void {

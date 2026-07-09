@@ -716,6 +716,10 @@
     "light": {
       "__id__": 19
     },
+    "chooseParticlesPrefab": {
+      "__uuid__": "abecf502-c837-4d01-8ec5-b714a9080bbe",
+      "__expectedType__": "cc.Prefab"
+    },
     "_id": ""
   },
   {
