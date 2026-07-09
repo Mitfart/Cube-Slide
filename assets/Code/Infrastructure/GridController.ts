@@ -358,7 +358,9 @@ export class GridController extends Component {
         const trail = this.spawnPrefab(prefab, x, z);
         if (color) this.applyMaterialColor(trail, color);
         this.soundManager.playCellTrail(trail.worldPosition);
-        this.playTrailSpawn(trail);
+        if (this.animateFillSpawns) {
+            this.playTrailSpawn(trail);
+        }
         this.trailNodes.set(key, trail);
         return trail;
     }
