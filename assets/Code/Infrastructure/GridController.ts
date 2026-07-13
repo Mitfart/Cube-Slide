@@ -39,9 +39,6 @@ export class GridController extends Component {
     public soundManager: SoundManager | null = null;
 
     @property
-    public visualSpawnsPerFrame = 24;
-
-    @property
     public animateFillSpawns = false;
 
     private readonly cellSize = 1;
@@ -61,8 +58,6 @@ export class GridController extends Component {
     private readonly levelCenters: Vec3[] = [];
     private readonly levelSpawns: Vec3[] = [];
     private readonly cameraTransitionZ: Vec2[] = [];
-    private readonly visualSpawnQueue: (() => void)[] = [];
-    private readonly processVisualSpawnQueueCallback = (): void => this.processVisualSpawnQueue();
     public onCoinCollected: ((coin: Node) => void) | null = null;
     private fillSoundActive = false;
     private fillSoundTicket = 0;
@@ -110,12 +105,6 @@ export class GridController extends Component {
             }
         }
         this.spawnMergedWalls(tiles, innerWalls);
-        this.processVisualSpawnQueue();
-    }
-
-    protected onDisable(): void {
-        this.unschedule(this.processVisualSpawnQueueCallback);
-        this.visualSpawnQueue.length = 0;
     }
 
     public getLevelCenter(level: LevelConfig): Vec3 {
@@ -180,9 +169,6 @@ export class GridController extends Component {
     }
 
     public clearLevel(): void {
-        this.unschedule(this.processVisualSpawnQueueCallback);
-        this.visualSpawnQueue.length = 0;
-
         for (const tile of this.spawned) {
             if (tile.isValid) {
                 tile.destroy();
@@ -278,7 +264,7 @@ export class GridController extends Component {
         return !this.isWalkableGrid(x, z);
     }
 
-    public getSlideTarget(start: Vec2, direction: Vec2): Vec3 {
+    public getSlideTarget(start: Vec2, direction: Vec2, stopOnTrail = false): Vec3 {
         let x = start.x;
         let z = start.y;
         const startFilled = this.isFilledGrid(x, z);
@@ -286,7 +272,7 @@ export class GridController extends Component {
         while (true) {
             const nextX = x + direction.x;
             const nextZ = z + direction.y;
-            if (this.isFilledGrid(nextX, nextZ)) {
+            if (this.isFilledGrid(nextX, nextZ) || (stopOnTrail && this.hasTrailGrid(nextX, nextZ))) {
                 if (movedThroughEmpty) {
                     return this.gridToLocal(nextX, nextZ);
                 }
@@ -562,17 +548,6 @@ export class GridController extends Component {
         this.spawnScaled(this.getPrefab(symbol), x, z, 1, 1);
     }
 
-    private processVisualSpawnQueue(): void {
-        const count = Math.max(1, this.visualSpawnsPerFrame);
-        for (let i = 0; i < count && this.visualSpawnQueue.length > 0; i++) {
-            this.visualSpawnQueue.shift()?.();
-        }
-
-        if (this.visualSpawnQueue.length > 0) {
-            this.scheduleOnce(this.processVisualSpawnQueueCallback, 0);
-        }
-    }
-
     private spawnShadow(x: number, z: number, width: number, depth: number, tiles: Map<string, string>): void {
         const shadowMinX = x + this.wallShadowOffset.x - width / 2;
         const shadowMaxX = x + this.wallShadowOffset.x + width / 2;
@@ -589,7 +564,7 @@ export class GridController extends Component {
             const maxZ = Math.min(shadowMaxZ, tileZ + 0.5);
             if (minX >= maxX || minZ >= maxZ) continue;
 
-            this.visualSpawnQueue.push(() => this.spawnScaled(this.levelWallShadow, (minX + maxX) / 2, (minZ + maxZ) / 2, maxX - minX, maxZ - minZ));
+            this.spawnScaled(this.levelWallShadow, (minX + maxX) / 2, (minZ + maxZ) / 2, maxX - minX, maxZ - minZ);
         }
     }
 
@@ -653,6 +628,7 @@ export class GridController extends Component {
         spawn();
     }
 
+
     private applyMaterialColor(node: Node, color: Color): void {
         for (const renderer of node.getComponentsInChildren(MeshRenderer)) {
             for (let i = 0; i < Math.max(1, renderer.materials.length); i++) {
@@ -715,55 +691,71 @@ export class GridController extends Component {
             return;
         }
 
-        const bounds = this.getKeyBounds(this.levelTiles[levelIndex]);
         const fillable = this.levelFillableTiles[levelIndex];
-        const blocked = new Set<string>();
-        this.addKeys(blocked, this.levelBoundaryTiles[levelIndex]);
-        this.addKeys(blocked, this.filledTiles);
-        this.addKeys(blocked, this.fillNodes.keys());
-
-        const outside = new Set<string>();
-        const queue = [this.key(bounds.minX - 1, bounds.minZ - 1)];
-        outside.add(queue[0]);
-
-        const add = (x: number, z: number): void => {
-            if (x < bounds.minX - 1 || x > bounds.maxX + 1 || z < bounds.minZ - 1 || z > bounds.maxZ + 1) return;
-            const key = this.key(x, z);
-            if (outside.has(key) || blocked.has(key)) return;
-            outside.add(key);
-            queue.push(key);
-        };
-
-        for (let i = 0; i < queue.length; i++) {
-            const [x, z] = this.parseTile(queue[i]);
-            add(x + 1, z);
-            add(x - 1, z);
-            add(x, z + 1);
-            add(x, z - 1);
-        }
-
-        const inner: string[] = [];
+        const open = new Set<string>();
         for (const key of fillable) {
-            if (this.filledTiles.has(key) || this.fillNodes.has(key) || outside.has(key)) {
-                continue;
+            if (!this.filledTiles.has(key) && !this.fillNodes.has(key)) {
+                open.add(key);
             }
-            inner.push(key);
         }
 
-        const delays = this.getFillDelays(inner, playerCell);
-        if (inner.length > 0) {
-            this.playFillSounds(playerCell, this.getMaxFillDelay(inner, delays) + 0.16);
+        const components: string[][] = [];
+        while (open.size > 0) {
+            const start = open.values().next().value as string;
+            const component: string[] = [];
+            const queue = [start];
+            open.delete(start);
+
+            for (let i = 0; i < queue.length; i++) {
+                const key = queue[i];
+                component.push(key);
+                const [x, z] = this.parseTile(key);
+                for (const next of [this.key(x + 1, z), this.key(x - 1, z), this.key(x, z + 1), this.key(x, z - 1)]) {
+                    if (!open.delete(next)) continue;
+                    queue.push(next);
+                }
+            }
+            components.push(component);
         }
-        for (const key of inner) {
+
+        const allOpen = components.reduce((all, component) => all.concat(component), [] as string[]);
+        let keys: string[] = [];
+        if (components.length > 1) {
+            const center = this.localToGrid(this.levelCenters[levelIndex]);
+            keys = components.sort((a, b) => a.length - b.length || this.getAreaDistanceFromCenter(b, center) - this.getAreaDistanceFromCenter(a, center))[0];
+        }
+        if (this.areWallsSurroundedByFill(levelIndex, new Set(keys))) {
+            keys = allOpen;
+        }
+
+        const delays = this.getFillDelays(keys, playerCell);
+        if (keys.length > 0) {
+            this.playFillSounds(playerCell, this.getMaxFillDelay(keys, delays) + 0.16);
+        }
+        for (const key of keys) {
             const [x, z] = this.parseTile(key);
             this.setFilled(x, z, fillPrefab, true, (delays.get(key) ?? 0) * 0.04, false, color, true);
         }
     }
 
-    private addKeys(target: Set<string>, keys: Iterable<string>): void {
-        for (const key of keys) {
-            target.add(key);
+    private getAreaDistanceFromCenter(keys: string[], center: Vec2): number {
+        return keys.reduce((sum, key) => {
+            const [x, z] = this.parseTile(key);
+            return sum + Math.abs(x - center.x) + Math.abs(z - center.y);
+        }, 0) / keys.length;
+    }
+
+    private areWallsSurroundedByFill(levelIndex: number, pending = new Set<string>()): boolean {
+        const fillable = this.levelFillableTiles[levelIndex];
+        for (const wallKey of this.levelBoundaryTiles[levelIndex]) {
+            const [x, z] = this.parseTile(wallKey);
+            for (const key of [this.key(x + 1, z), this.key(x - 1, z), this.key(x, z + 1), this.key(x, z - 1)]) {
+                if (fillable.has(key) && !pending.has(key) && !this.filledTiles.has(key) && !this.fillNodes.has(key)) {
+                    return false;
+                }
+            }
         }
+        return true;
     }
 
     private getKeyBounds(keys: Set<string>): { minX: number; maxX: number; minZ: number; maxZ: number } {

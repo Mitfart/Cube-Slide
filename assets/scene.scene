@@ -2098,7 +2098,6 @@
       "__expectedType__": "cc.Prefab"
     },
     "soundManager": null,
-    "visualSpawnsPerFrame": 24,
     "animateFillSpawns": false,
     "_id": "abcw8qm3JDDal1qopliQKi"
   },
@@ -2349,7 +2348,7 @@
       "__expectedType__": "cc.Prefab"
     },
     "paddingPixels": 21,
-    "bottomPaddingPixels": 18
+    "bottomPaddingPixels": 110
   },
   {
     "__type__": "PlayerColorTheme",

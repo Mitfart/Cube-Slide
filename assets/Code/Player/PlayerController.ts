@@ -195,9 +195,9 @@ export class PlayerController extends Component {
             .call(() => {
                 this.node.setPosition(target);
                 this.paintCurrentCell();
+                this.commitTrailAtCurrentCell();
                 this.moving = false;
                 this.direction.set(0, 0);
-                this.commitTrailAtCurrentCell();
             })
             .start();
     }
