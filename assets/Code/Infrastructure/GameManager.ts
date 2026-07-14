@@ -33,6 +33,9 @@ class LevelViewConfig {
 
     @property
     public bottomPaddingPixels = 0;
+
+    @property
+    public topPaddingPixels = 0;
 }
 
 @ccclass('PlayerColorTheme')
@@ -312,16 +315,38 @@ export class GameManager extends Component {
             }
 
             const contentWidthPixels = spriteWidth - config.paddingPixels * 2;
-            if (contentWidthPixels <= 0) {
-                console.error('[GameManager] LevelView padding is larger than spriteFrame width');
+            const contentHeightPixels = spriteHeight - config.topPaddingPixels - config.bottomPaddingPixels;
+            if (contentWidthPixels <= 0 || contentHeightPixels <= 0) {
+                console.error('[GameManager] LevelView padding leaves no sprite content');
                 node.destroy();
                 continue;
             }
 
-            const scale = this.getLevelWidth(levels[i]) / (contentWidthPixels / 100);
-            const bottomOffset = (spriteHeight / 2 - config.bottomPaddingPixels) / 100 * scale;
-            node.setPosition(this.getLevelViewX(levels[i], center), center.y, this.getLevelBottom(levels[i], center) - bottomOffset + 0.5);
-            node.setScale(scale, scale, scale);
+            // Width and height describe different world dimensions. Stretching the
+            // sprite on each axis keeps both level borders aligned independently.
+            const level = levels[i];
+            const bounds = this.getFloorBounds(level);
+            const floorWidth = bounds.maxX - bounds.minX + 1;
+            // Match the distance between the outer floor-cell centres; the
+            // sprite content already includes the edge pixels and padding.
+            const floorHeight = bounds.maxZ - bounds.minZ + 1;
+
+            const pixelToUnit = 1 / 100;
+            const scaleX = floorWidth / (contentWidthPixels * pixelToUnit);
+            const scaleZ = floorHeight / (contentHeightPixels * pixelToUnit);
+            // Use one calibration for both axes. Anchor the padded content to
+            // the actual +Z floor edge so top padding cannot move the bottom.
+            const floorBottomZ = center.z + bounds.maxZ + 0.5;
+            const spriteBottomPixels = spriteHeight / 2 - config.bottomPaddingPixels;
+            const positionZ = floorBottomZ - spriteBottomPixels * pixelToUnit * scaleZ;
+            node.setPosition(
+                center.x + (bounds.minX + bounds.maxX) / 2,
+                center.y,
+                positionZ,
+            );
+            // View is rotated -90° on X in Level_Sprite_Walls: image X maps
+            // to parent X and image Y maps to parent Z.
+            node.setScale(scaleX, 1, scaleZ);
             this.spawnedLevelViews.push(node);
         }
     }
@@ -333,17 +358,27 @@ export class GameManager extends Component {
         this.spawnedLevelViews.length = 0;
     }
 
-    private getLevelWidth(level: LevelConfig): number {
-        return level.rows.reduce((width, row) => Math.max(width, row.replace(/#/g, '').length), 0);
-    }
-
-    private getLevelViewX(level: LevelConfig, center: Vec3): number {
+    private getFloorBounds(level: LevelConfig): { minX: number; maxX: number; minZ: number; maxZ: number } {
         const rowWidth = level.rows.reduce((width, row) => Math.max(width, row.length), 0);
-        return center.x - (rowWidth % 2 === 0 ? 0.5 : 0);
-    }
+        const offsetX = -Math.floor(rowWidth / 2);
+        // Built level center is centered on the playable rows, not the tunnel.
+        const offsetZ = -(level.rows.length - 1) / 2;
+        let minX = Number.POSITIVE_INFINITY;
+        let maxX = Number.NEGATIVE_INFINITY;
+        let minZ = Number.POSITIVE_INFINITY;
+        let maxZ = Number.NEGATIVE_INFINITY;
 
-    private getLevelBottom(level: LevelConfig, center: Vec3): number {
-        return center.z + (level.rows.length - 3) / 2;
+        for (let z = 0; z < level.rows.length; z++) {
+            for (let x = 0; x < level.rows[z].length; x++) {
+                if (level.rows[z][x] === '#') continue;
+                minX = Math.min(minX, offsetX + x);
+                maxX = Math.max(maxX, offsetX + x);
+                minZ = Math.min(minZ, offsetZ + z);
+                maxZ = Math.max(maxZ, offsetZ + z);
+            }
+        }
+
+        return { minX, maxX, minZ, maxZ };
     }
 
     private spawnEnemies(levels: LevelConfig[]): void {

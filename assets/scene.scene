@@ -2348,7 +2348,8 @@
       "__expectedType__": "cc.Prefab"
     },
     "paddingPixels": 21,
-    "bottomPaddingPixels": 110
+    "bottomPaddingPixels": 110,
+    "topPaddingPixels": 137
   },
   {
     "__type__": "PlayerColorTheme",
