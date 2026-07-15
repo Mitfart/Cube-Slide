@@ -272,6 +272,9 @@ export class GridController extends Component {
         while (true) {
             const nextX = x + direction.x;
             const nextZ = z + direction.y;
+            if (!this.isLevelFloorGrid(nextX, nextZ)) {
+                return this.gridToLocal(x, z);
+            }
             if (this.isFilledGrid(nextX, nextZ) || (stopOnTrail && this.hasTrailGrid(nextX, nextZ))) {
                 if (movedThroughEmpty) {
                     return this.gridToLocal(nextX, nextZ);

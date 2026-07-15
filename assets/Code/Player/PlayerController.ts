@@ -185,6 +185,7 @@ export class PlayerController extends Component {
         if (distance <= 0) {
             this.moving = false;
             this.direction.set(0, 0);
+            this.commitTrailAtCurrentCell();
             return;
         }
 
