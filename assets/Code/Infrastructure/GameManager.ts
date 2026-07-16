@@ -1,4 +1,4 @@
-import { _decorator, Button, Camera, Color, Component, instantiate, Layers, Mat4, Node, ParticleSystem, Prefab, SpriteFrame, SpriteRenderer, Vec2, Vec3, view } from 'cc';
+import { _decorator, Button, Camera, Color, Component, input, Input, instantiate, Layers, Mat4, Node, ParticleSystem, Prefab, SpriteFrame, SpriteRenderer, Vec2, Vec3, view } from 'cc';
 import { LevelConfig, LEVELS } from '../Gameplay/Levels';
 import { GridController } from './GridController';
 import { EnemyController } from '../Enemy/EnemyController';
@@ -8,6 +8,7 @@ import { SoundManager } from './Services/SoundManager';
 import { UIManager } from '../UI/UIManager';
 import { UI_ChooseLevelController } from '../UI/UI_ChooseLevelController';
 import { UI_GameDownloadBtn } from '../../Cocos_Engine/General/Code/export/UI_GameDownloadBtn';
+import { UI_GameDownloadInputClicks } from '../../Cocos_Engine/General/Code/export/UI_GameDownloadInputClicks';
 import { UI_SwipeTutorial } from '../UI/UI_SwipeTutorial';
 const { ccclass, property } = _decorator;
 
@@ -82,6 +83,9 @@ export class GameManager extends Component {
     @property(UI_ChooseLevelController)
     public chooseLevelUI: UI_ChooseLevelController | null = null;
 
+    @property(UI_GameDownloadInputClicks)
+    public downloadInputClicks: UI_GameDownloadInputClicks | null = null;
+
     @property(Prefab)
     public swipeTutorialPrefab: Prefab | null = null;
 
@@ -114,8 +118,30 @@ export class GameManager extends Component {
 
     protected onLoad(): void {
         Analytics.emit(AnalyticEvents.LOADING);
-        
+
+        if (!this.downloadInputClicks) {
+            console.error('[GameManager] Missing downloadInputClicks');
+            return;
+        }
+
+        input.on(Input.EventType.TOUCH_START, this.registerDownloadInteraction, this);
         this.node._persistNode = true;
+        
+        this.downloadInputClicks.init();
+    }
+
+    protected onDestroy(): void {
+        input.off(Input.EventType.TOUCH_START, this.registerDownloadInteraction, this);
+    }
+
+    private registerDownloadInteraction(): void {
+        if (!this.chooseLevelUI?.node.activeInHierarchy) {
+            this.downloadInputClicks?.registerInteraction();
+        }
+    }
+
+    public registerChooseLevelInteraction(): void {
+        this.downloadInputClicks?.registerInteraction();
     }
 
     protected start(): void {
