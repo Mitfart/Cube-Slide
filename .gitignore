@@ -23,3 +23,8 @@ node_modules/
 #//////////////////////////
 .idea/
 
+# Upload exclusions
+**/_*/
+*.md
+**/cocos-code-mode/
+
