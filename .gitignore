@@ -28,3 +28,9 @@ node_modules/
 *.md
 **/cocos-code-mode/
 
+
+# Local Cocos and editor output
+**/.*/
+native/
+.vs/
+.creator/
